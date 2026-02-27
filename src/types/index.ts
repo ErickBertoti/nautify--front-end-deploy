@@ -1,0 +1,383 @@
+// ============================================
+// NAUTIFY - Tipos TypeScript
+// Sistema de Gestão de Sociedades Náuticas
+// ============================================
+
+// --- Perfis de Usuário ---
+export type UserRole = 'admin' | 'socio' | 'marinheiro';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export interface BoatMembership {
+  userId: string;
+  boatId: string;
+  role: UserRole;
+  isActive: boolean;
+  joinedAt: string;
+}
+
+// --- Embarcações ---
+export interface Boat {
+  id: string;
+  name: string;
+  type: 'lancha' | 'jet' | 'veleiro' | 'outro';
+  model?: string;
+  year?: number;
+  registrationNumber?: string;
+  imageUrl?: string;
+  marinaName?: string;
+  marinaLocation?: string;
+  createdAt: string;
+  members: BoatMember[];
+}
+
+export interface BoatMember {
+  id: string;
+  user: User;
+  role: UserRole;
+  isActive: boolean;
+  joinedAt: string;
+}
+
+// --- Despesas ---
+export type ExpenseCategory = 'fixa' | 'variavel' | 'individual';
+export type ExpenseIndividualMode = 'exclusivo' | 'rateado';
+export type ExpenseStatus = 'pendente' | 'paga' | 'vencida';
+
+export interface Expense {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  description: string;
+  amount: number;
+  category: ExpenseCategory;
+  individualMode?: ExpenseIndividualMode;
+  responsibleUserId?: string;
+  responsibleUser?: User;
+  splitAmount?: number;
+  splitCount?: number;
+  dueDate?: string;
+  status: ExpenseStatus;
+  createdBy: string;
+  createdAt: string;
+}
+
+// --- Receitas ---
+export type RevenueCategory = 'mensalidade' | 'aluguel' | 'evento' | 'taxa' | 'outro';
+export type RevenueStatus = 'pendente' | 'recebida' | 'atrasada';
+
+export interface Revenue {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  description: string;
+  amount: number;
+  category: RevenueCategory;
+  payerUserId?: string;
+  payerUser?: User;
+  dueDate?: string;
+  receivedDate?: string;
+  status: RevenueStatus;
+  createdBy: string;
+  createdAt: string;
+}
+
+// --- Fluxo de Caixa ---
+export type CashFlowType = 'entrada' | 'saida';
+
+export interface CashFlowEntry {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  type: CashFlowType;
+  description: string;
+  amount: number;
+  date: string;
+  relatedExpenseId?: string;
+  relatedRevenueId?: string;
+  createdAt: string;
+}
+
+export interface CashFlowSummary {
+  totalEntradas: number;
+  totalSaidas: number;
+  saldo: number;
+  entriesByMonth: {
+    month: string;
+    entradas: number;
+    saidas: number;
+    saldo: number;
+  }[];
+}
+
+// --- Saídas ---
+export type TripStatus = 'em_andamento' | 'finalizada' | 'com_ocorrencia';
+export type TripType = 'uso' | 'teste';
+
+export interface Trip {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  type: TripType;
+  responsibleUserId?: string;
+  responsibleUser?: User;
+  sailorId: string;
+  sailor?: User;
+  startDate: string;
+  endDate?: string;
+  status: TripStatus;
+  observations?: string;
+  createdAt: string;
+}
+
+// --- Abastecimentos / Combustível ---
+export type FuelAssociation = 'socio' | 'teste';
+
+export interface Fueling {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  date: string;
+  liters: number;
+  totalValue: number;
+  pricePerLiter?: number;
+  associationType: FuelAssociation;
+  associatedUserId?: string;
+  associatedUser?: User;
+  associatedTripId?: string;
+  observations?: string;
+  createdAt: string;
+}
+
+export interface FuelConsumptionSummary {
+  totalLiters: number;
+  totalCost: number;
+  avgPricePerLiter: number;
+  avgLitersPerTrip: number;
+  monthlyData: {
+    month: string;
+    liters: number;
+    cost: number;
+  }[];
+}
+
+// --- Chamados / Ocorrências ---
+export type IncidentStatus = 'pendente' | 'aprovado' | 'pago';
+
+export interface Incident {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  tripId: string;
+  description: string;
+  estimatedCost: number;
+  photos: string[];
+  status: IncidentStatus;
+  expenseMode?: ExpenseIndividualMode;
+  generatedExpenseId?: string;
+  createdBy: string;
+  createdByUser?: User;
+  createdAt: string;
+}
+
+// --- Manutenção ---
+export type MaintenanceType = 'preventiva' | 'corretiva';
+export type MaintenanceStatus = 'agendada' | 'em_andamento' | 'concluida' | 'cancelada';
+export type MaintenancePriority = 'baixa' | 'media' | 'alta' | 'urgente';
+
+export interface Maintenance {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  title: string;
+  description: string;
+  type: MaintenanceType;
+  status: MaintenanceStatus;
+  priority: MaintenancePriority;
+  scheduledDate: string;
+  completedDate?: string;
+  estimatedCost: number;
+  actualCost?: number;
+  responsibleUserId?: string;
+  responsibleUser?: User;
+  parts: MaintenancePart[];
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface MaintenancePart {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+// --- Agenda ---
+export type EventType = 'reserva' | 'manutencao' | 'lembrete' | 'evento' | 'outro';
+export type EventStatus = 'confirmado' | 'pendente' | 'cancelado';
+
+export interface CalendarEvent {
+  id: string;
+  boatId?: string;
+  boatName?: string;
+  title: string;
+  description?: string;
+  type: EventType;
+  status: EventStatus;
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  color?: string;
+  createdByUserId: string;
+  createdByUser?: User;
+  attendees?: User[];
+  reminderMinutes?: number;
+  relatedMaintenanceId?: string;
+  relatedTripId?: string;
+  createdAt: string;
+}
+
+// --- Sócios ---
+export type PartnerStatus = 'ativo' | 'inativo' | 'suspenso';
+
+export interface Partner {
+  id: string;
+  user: User;
+  boatId: string;
+  boatName?: string;
+  role: UserRole;
+  status: PartnerStatus;
+  participationPercent: number;
+  monthlyContribution: number;
+  joinedAt: string;
+  leftAt?: string;
+  totalContributed: number;
+  pendingPayments: number;
+}
+
+export interface PartnerContribution {
+  id: string;
+  partnerId: string;
+  partnerUser?: User;
+  boatId: string;
+  amount: number;
+  month: string;
+  paidAt?: string;
+  status: 'pendente' | 'pago' | 'atrasado';
+  createdAt: string;
+}
+
+// --- Documentos ---
+export type DocumentCategory = 'seguro' | 'habilitacao' | 'contrato' | 'licenca' | 'vistoria' | 'outro';
+export type DocumentStatus = 'valido' | 'vencendo' | 'vencido';
+
+export interface Document {
+  id: string;
+  boatId?: string;
+  boatName?: string;
+  title: string;
+  description?: string;
+  category: DocumentCategory;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  expirationDate?: string;
+  status: DocumentStatus;
+  uploadedBy: string;
+  uploadedByUser?: User;
+  createdAt: string;
+}
+
+// --- Notificações ---
+export type NotificationType = 'manutencao' | 'financeiro' | 'documento' | 'sistema' | 'agenda';
+export type NotificationPriority = 'baixa' | 'media' | 'alta';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  isRead: boolean;
+  readAt?: string;
+  actionUrl?: string;
+  relatedEntityId?: string;
+  relatedEntityType?: string;
+  createdAt: string;
+}
+
+// --- Relatórios ---
+export type ReportType = 'financeiro' | 'uso' | 'manutencao' | 'combustivel' | 'geral';
+export type ReportPeriod = 'mensal' | 'trimestral' | 'semestral' | 'anual' | 'personalizado';
+
+export interface ReportFilter {
+  type: ReportType;
+  period: ReportPeriod;
+  boatId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ReportData {
+  id: string;
+  type: ReportType;
+  title: string;
+  period: string;
+  generatedAt: string;
+  summary: Record<string, number>;
+  chartData: Record<string, unknown>[];
+}
+
+// --- Dashboard Expandido ---
+export interface DashboardStats {
+  totalBoats: number;
+  totalExpensesMonth: number;
+  totalRevenueMonth: number;
+  totalTripsMonth: number;
+  pendingIncidents: number;
+  pendingMaintenances: number;
+  expiringDocuments: number;
+  unreadNotifications: number;
+  cashFlowBalance: number;
+  upcomingExpenses: Expense[];
+  recentTrips: Trip[];
+  recentIncidents: Incident[];
+  upcomingEvents: CalendarEvent[];
+  upcomingMaintenances: Maintenance[];
+  monthlyExpensesByCategory: {
+    fixa: number;
+    variavel: number;
+    individual: number;
+  };
+  monthlyRevenueVsExpense: {
+    month: string;
+    revenue: number;
+    expense: number;
+  }[];
+}
+
+// --- API ---
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  success: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
