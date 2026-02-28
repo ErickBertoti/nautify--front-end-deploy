@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 import {
   LayoutDashboard,
   Ship,
@@ -23,7 +24,6 @@ import {
   Bell,
   Settings,
   LogOut,
-  Anchor,
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
@@ -94,9 +94,13 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 hidden lg:flex h-screen w-64 flex-col bg-sidebar-bg text-sidebar-foreground">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-nautify-600">
-          <Anchor className="h-5 w-5 text-white" />
-        </div>
+        <Image
+          src="/logo-white.png"
+          alt="Nautify"
+          width={36}
+          height={36}
+          className="rounded-lg"
+        />
         <div>
           <h1 className="text-lg font-bold tracking-tight text-white">Nautify</h1>
           <p className="text-[10px] text-sidebar-muted tracking-widest uppercase">Gestão Náutica</p>

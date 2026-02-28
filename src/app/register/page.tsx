@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Anchor, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -49,9 +50,13 @@ export default function RegisterPage() {
         </div>
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-3 mb-8">
-            <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-nautify-500/20 backdrop-blur-sm border border-white/10">
-              <Anchor className="h-8 w-8 text-nautify-300" />
-            </div>
+            <Image
+              src="/logo-white.png"
+              alt="Nautify"
+              width={56}
+              height={56}
+              className="rounded-2xl"
+            />
             <div>
               <h1 className="text-3xl font-bold text-white">Nautify</h1>
               <p className="text-sm text-nautify-300">Gestão de Sociedades Náuticas</p>
@@ -75,9 +80,13 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-nautify-600">
-              <Anchor className="h-6 w-6 text-white" />
-            </div>
+            <Image
+              src="/logo-blue.png"
+              alt="Nautify"
+              width={40}
+              height={40}
+              className="rounded-xl"
+            />
             <h1 className="text-2xl font-bold text-foreground">Nautify</h1>
           </div>
 

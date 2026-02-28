@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { allNavItems } from './Sidebar';
+import Image from 'next/image';
 import {
   Menu,
   X,
@@ -12,7 +13,6 @@ import {
   Search,
   Settings,
   LogOut,
-  Anchor,
   User,
   LayoutDashboard,
   Ship,
@@ -154,9 +154,13 @@ export function Header() {
             {/* Logo */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-nautify-600">
-                  <Anchor className="h-5 w-5 text-white" />
-                </div>
+                <Image
+                  src="/logo-white.png"
+                  alt="Nautify"
+                  width={36}
+                  height={36}
+                  className="rounded-lg"
+                />
                 <h1 className="text-lg font-bold text-white">Nautify</h1>
               </div>
               <button
