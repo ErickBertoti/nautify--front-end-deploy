@@ -99,7 +99,6 @@ export function Sidebar() {
           alt="Nautify"
           width={36}
           height={36}
-          className="rounded-lg"
         />
         <div>
           <h1 className="text-lg font-bold tracking-tight text-white">Nautify</h1>

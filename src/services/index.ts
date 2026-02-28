@@ -1,6 +1,8 @@
 import { api } from '@/lib/api';
 import type {
   User,
+  UserAddress,
+  DocumentType,
   Boat,
   Expense,
   Revenue,
@@ -30,10 +32,21 @@ export const authService = {
   login: (email: string, password: string) =>
     api.post<ApiResponse<{ token: string; user: User }>>('/auth/login', { email, password }),
 
-  register: (data: { name: string; email: string; phone?: string; password: string }) =>
-    api.post<ApiResponse<User>>('/auth/register', data),
+  register: (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password: string;
+    documentType?: DocumentType;
+    document?: string;
+    birthDate?: string;
+    address?: UserAddress;
+  }) => api.post<ApiResponse<User>>('/auth/register', data),
 
   me: () => api.get<ApiResponse<User>>('/auth/me'),
+
+  updateProfile: (data: Partial<Omit<User, 'id' | 'createdAt'>>) =>
+    api.put<ApiResponse<User>>('/auth/profile', data),
 
   logout: () => {
     localStorage.removeItem('nautify_token');

@@ -46,7 +46,6 @@ export default function LoginPage() {
               alt="Nautify"
               width={56}
               height={56}
-              className="rounded-2xl"
             />
             <div>
               <h1 className="text-3xl font-bold text-white">Nautify</h1>
@@ -91,7 +90,6 @@ export default function LoginPage() {
               alt="Nautify"
               width={40}
               height={40}
-              className="rounded-xl"
             />
             <h1 className="text-2xl font-bold text-foreground">Nautify</h1>
           </div>

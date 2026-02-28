@@ -4,39 +4,195 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
+import {
+  User,
+  MapPin,
+  Lock,
+  FileText,
+  Mail,
+  Phone,
+  Eye,
+  EyeOff,
+  Check,
+  ChevronRight,
+  ChevronLeft,
+  Calendar,
+  Hash,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Input';
 
+// ============================================
+// Masks
+// ============================================
+function maskCPF(value: string) {
+  return value
+    .replace(/\D/g, '')
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+function maskCNPJ(value: string) {
+  return value
+    .replace(/\D/g, '')
+    .slice(0, 14)
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
+function maskCEP(value: string) {
+  return value
+    .replace(/\D/g, '')
+    .slice(0, 8)
+    .replace(/(\d{5})(\d)/, '$1-$2');
+}
+
+function maskPhone(value: string) {
+  return value
+    .replace(/\D/g, '')
+    .slice(0, 11)
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+}
+
+// ============================================
+// Constants (outside component — stable refs)
+// ============================================
+const STEPS = [
+  { number: 1, label: 'Pessoal' },
+  { number: 2, label: 'Endereço' },
+  { number: 3, label: 'Segurança' },
+  { number: 4, label: 'Termos' },
+];
+
+const BR_STATES = [
+  { value: 'AC', label: 'AC' }, { value: 'AL', label: 'AL' },
+  { value: 'AP', label: 'AP' }, { value: 'AM', label: 'AM' },
+  { value: 'BA', label: 'BA' }, { value: 'CE', label: 'CE' },
+  { value: 'DF', label: 'DF' }, { value: 'ES', label: 'ES' },
+  { value: 'GO', label: 'GO' }, { value: 'MA', label: 'MA' },
+  { value: 'MT', label: 'MT' }, { value: 'MS', label: 'MS' },
+  { value: 'MG', label: 'MG' }, { value: 'PA', label: 'PA' },
+  { value: 'PB', label: 'PB' }, { value: 'PR', label: 'PR' },
+  { value: 'PE', label: 'PE' }, { value: 'PI', label: 'PI' },
+  { value: 'RJ', label: 'RJ' }, { value: 'RN', label: 'RN' },
+  { value: 'RS', label: 'RS' }, { value: 'RO', label: 'RO' },
+  { value: 'RR', label: 'RR' }, { value: 'SC', label: 'SC' },
+  { value: 'SP', label: 'SP' }, { value: 'SE', label: 'SE' },
+  { value: 'TO', label: 'TO' },
+];
+
+// ============================================
+// Component
+// ============================================
 export default function RegisterPage() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const [form, setForm] = useState({
     name: '',
+    documentType: 'cpf' as 'cpf' | 'cnpj',
+    document: '',
+    birthDate: '',
+    cep: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
+    acceptTerms: false,
+    acceptPrivacy: false,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (form.password !== form.confirmPassword) {
-      alert('As senhas não coincidem');
-      return;
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function updateField(field: string, value: string | boolean) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: '' }));
+  }
+
+  function getAge(): number | null {
+    if (!form.birthDate) return null;
+    const birth = new Date(form.birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  }
+
+  function validateStep(s: number): boolean {
+    const e: Record<string, string> = {};
+    if (s === 1) {
+      if (!form.name.trim()) e.name = 'Nome é obrigatório';
+      const digits = form.document.replace(/\D/g, '');
+      if (form.documentType === 'cpf' && digits.length !== 11) e.document = 'CPF deve ter 11 dígitos';
+      if (form.documentType === 'cnpj' && digits.length !== 14) e.document = 'CNPJ deve ter 14 dígitos';
+      if (!form.birthDate) e.birthDate = 'Data de nascimento é obrigatória';
+      else {
+        const age = getAge();
+        if (age !== null && age < 18) e.birthDate = 'Você deve ter pelo menos 18 anos';
+      }
     }
+    if (s === 2) {
+      if (form.cep.replace(/\D/g, '').length !== 8) e.cep = 'CEP inválido';
+      if (!form.street.trim()) e.street = 'Rua é obrigatória';
+      if (!form.number.trim()) e.number = 'Número é obrigatório';
+      if (!form.neighborhood.trim()) e.neighborhood = 'Bairro é obrigatório';
+      if (!form.city.trim()) e.city = 'Cidade é obrigatória';
+      if (!form.state) e.state = 'Estado é obrigatório';
+    }
+    if (s === 3) {
+      if (!form.email.trim()) e.email = 'E-mail é obrigatório';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido';
+      if (form.password.length < 8) e.password = 'Mínimo 8 caracteres';
+      if (form.password !== form.confirmPassword) e.confirmPassword = 'As senhas não coincidem';
+    }
+    if (s === 4) {
+      if (!form.acceptTerms) e.acceptTerms = 'Aceite os termos de uso';
+      if (!form.acceptPrivacy) e.acceptPrivacy = 'Aceite a política de privacidade';
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function nextStep() {
+    if (validateStep(step)) setStep((prev) => Math.min(prev + 1, 4));
+  }
+
+  function prevStep() {
+    setStep((prev) => Math.max(prev - 1, 1));
+  }
+
+  async function handleSubmit() {
+    if (!validateStep(4)) return;
     setIsLoading(true);
-    // TODO: Integrar com API Go
-    setTimeout(() => {
-      router.push('/login');
-    }, 1000);
-  };
+    setTimeout(() => router.push('/login'), 1500);
+  }
+
+  const docMask = form.documentType === 'cpf' ? maskCPF : maskCNPJ;
+  const docPlaceholder = form.documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00';
+  const age = getAge();
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-nautify-950 via-nautify-900 to-nautify-800 relative overflow-hidden">
+
+      {/* ── Left panel ── */}
+      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-nautify-950 via-nautify-900 to-nautify-800 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 800 800">
             <defs>
@@ -50,127 +206,439 @@ export default function RegisterPage() {
         </div>
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-3 mb-8">
-            <Image
-              src="/logo-white.png"
-              alt="Nautify"
-              width={56}
-              height={56}
-              className="rounded-2xl"
-            />
+            <Image src="/logo-white.png" alt="Nautify" width={56} height={56} />
             <div>
               <h1 className="text-3xl font-bold text-white">Nautify</h1>
               <p className="text-sm text-nautify-300">Gestão de Sociedades Náuticas</p>
             </div>
           </div>
           <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Comece a gerenciar
-            <br />
-            sua embarcação
-            <br />
+            Comece a gerenciar<br />sua embarcação<br />
             <span className="text-nautify-400">de forma profissional</span>
           </h2>
           <p className="text-lg text-nautify-200/80 max-w-md">
             Crie sua conta gratuita e adicione sua primeira embarcação em minutos.
           </p>
+
+          <div className="mt-12 space-y-3">
+            {STEPS.map((s) => (
+              <div
+                key={s.number}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all',
+                  step === s.number ? 'bg-white/10 text-white' :
+                  step > s.number ? 'text-nautify-400' : 'text-nautify-700'
+                )}
+              >
+                <div className={cn(
+                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold',
+                  step > s.number ? 'bg-nautify-400/20 text-nautify-400' :
+                  step === s.number ? 'bg-white/20 text-white' : 'bg-white/5 text-nautify-700'
+                )}>
+                  {step > s.number ? <Check className="h-3.5 w-3.5" /> : s.number}
+                </div>
+                <span className="text-sm font-medium">{s.label}</span>
+                {step === s.number && <ChevronRight className="h-4 w-4 ml-auto" />}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Right side - Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">
+      {/* ── Right panel ── */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-8 overflow-y-auto">
+        <div className="w-full max-w-lg mx-auto">
+
           {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <Image
-              src="/logo-blue.png"
-              alt="Nautify"
-              width={40}
-              height={40}
-              className="rounded-xl"
-            />
+          <div className="flex items-center gap-3 mb-6 lg:hidden">
+            <Image src="/logo-blue.png" alt="Nautify" width={40} height={40} />
             <h1 className="text-2xl font-bold text-foreground">Nautify</h1>
           </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground">Criar conta</h2>
-            <p className="text-muted-foreground mt-1">Preencha seus dados para começar</p>
+          {/* Step indicator */}
+          <div className="flex items-center justify-between mb-8 gap-1 sm:gap-3">
+            {STEPS.map((s, i) => (
+              <React.Fragment key={s.number}>
+                <div className="flex flex-col items-center gap-1">
+                  <div className={cn(
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-300',
+                    step > s.number ? 'bg-success text-success-foreground' :
+                    step === s.number ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25' :
+                    'bg-muted text-muted-foreground'
+                  )}>
+                    {step > s.number ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : s.number}
+                  </div>
+                  <span className={cn(
+                    'text-[10px] sm:text-xs font-medium transition-colors',
+                    step === s.number ? 'text-primary' : 'text-muted-foreground'
+                  )}>
+                    {s.label}
+                  </span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className={cn(
+                    'flex-1 h-0.5 rounded-full transition-colors duration-300',
+                    step > s.number ? 'bg-success' : 'bg-muted'
+                  )} />
+                )}
+              </React.Fragment>
+            ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <Input
-                label="Nome completo"
-                type="text"
-                placeholder="Seu nome"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="pl-10"
-                required
-              />
-              <User className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
-            </div>
+          {/* ── Step 1: Dados Pessoais ── */}
+          {step === 1 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Dados Pessoais</h2>
+                <p className="text-muted-foreground mt-1">Informações básicas sobre você</p>
+              </div>
 
-            <div className="relative">
-              <Input
-                label="E-mail"
-                type="email"
-                placeholder="seu@email.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="pl-10"
-                required
-              />
-              <Mail className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
-            </div>
+              <div className="relative">
+                <Input
+                  label="Nome completo"
+                  placeholder="Seu nome completo"
+                  value={form.name}
+                  onChange={(e) => updateField('name', e.target.value)}
+                  error={errors.name}
+                  className="pl-10"
+                />
+                <User className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+              </div>
 
-            <div className="relative">
-              <Input
-                label="Telefone"
-                type="tel"
-                placeholder="(11) 99999-9999"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="pl-10"
-              />
-              <Phone className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Tipo de documento
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { updateField('documentType', 'cpf'); updateField('document', ''); }}
+                    className={cn(
+                      'flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium border transition-all cursor-pointer',
+                      form.documentType === 'cpf'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-input bg-transparent text-muted-foreground hover:border-primary/50'
+                    )}
+                  >
+                    <span className="sm:hidden">CPF</span>
+                    <span className="hidden sm:inline">CPF — Física</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { updateField('documentType', 'cnpj'); updateField('document', ''); }}
+                    className={cn(
+                      'flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium border transition-all cursor-pointer',
+                      form.documentType === 'cnpj'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-input bg-transparent text-muted-foreground hover:border-primary/50'
+                    )}
+                  >
+                    <span className="sm:hidden">CNPJ</span>
+                    <span className="hidden sm:inline">CNPJ — Jurídica</span>
+                  </button>
+                </div>
+              </div>
 
-            <div className="relative">
-              <Input
-                label="Senha"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Mínimo 8 caracteres"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="pl-10 pr-10"
-                required
-              />
-              <Lock className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+              <div className="relative">
+                <Input
+                  label={form.documentType === 'cpf' ? 'CPF' : 'CNPJ'}
+                  placeholder={docPlaceholder}
+                  value={form.document}
+                  onChange={(e) => updateField('document', docMask(e.target.value))}
+                  error={errors.document}
+                  className="pl-10"
+                />
+                <Hash className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+              </div>
 
-            <div className="relative">
-              <Input
-                label="Confirmar senha"
-                type="password"
-                placeholder="Repita a senha"
-                value={form.confirmPassword}
-                onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                className="pl-10"
-                required
-              />
-              <Lock className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="relative">
+                  <Input
+                    label="Data de nascimento"
+                    type="date"
+                    value={form.birthDate}
+                    onChange={(e) => updateField('birthDate', e.target.value)}
+                    error={errors.birthDate}
+                    className="pl-10"
+                  />
+                  <Calendar className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex items-end">
+                  {form.birthDate && age !== null && (
+                    <div className="flex items-center gap-2 h-10 px-4 rounded-lg bg-muted text-sm text-foreground w-full">
+                      <span className="text-muted-foreground">Idade:</span>
+                      <span className="font-semibold">{age} anos</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+          )}
 
-            <Button type="submit" className="w-full" size="lg" isLoading={isLoading}>
-              Criar conta
-            </Button>
-          </form>
+          {/* ── Step 2: Endereço ── */}
+          {step === 2 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Endereço</h2>
+                <p className="text-muted-foreground mt-1">Informe seu endereço completo</p>
+              </div>
+
+              <div className="relative">
+                <Input
+                  label="CEP"
+                  placeholder="00000-000"
+                  value={form.cep}
+                  onChange={(e) => updateField('cep', maskCEP(e.target.value))}
+                  error={errors.cep}
+                  className="pl-10"
+                />
+                <MapPin className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+              </div>
+
+              <Input
+                label="Rua"
+                placeholder="Nome da rua"
+                value={form.street}
+                onChange={(e) => updateField('street', e.target.value)}
+                error={errors.street}
+              />
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="col-span-1">
+                  <Input
+                    label="Número"
+                    placeholder="123"
+                    value={form.number}
+                    onChange={(e) => updateField('number', e.target.value)}
+                    error={errors.number}
+                  />
+                </div>
+                <div className="col-span-1 sm:col-span-3">
+                  <Input
+                    label="Complemento"
+                    placeholder="Apto, Bloco (opcional)"
+                    value={form.complement}
+                    onChange={(e) => updateField('complement', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <Input
+                label="Bairro"
+                placeholder="Nome do bairro"
+                value={form.neighborhood}
+                onChange={(e) => updateField('neighborhood', e.target.value)}
+                error={errors.neighborhood}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Cidade"
+                  placeholder="Nome da cidade"
+                  value={form.city}
+                  onChange={(e) => updateField('city', e.target.value)}
+                  error={errors.city}
+                />
+                <Select
+                  label="Estado"
+                  placeholder="Selecione"
+                  value={form.state}
+                  onChange={(e) => updateField('state', e.target.value)}
+                  options={BR_STATES}
+                  error={errors.state}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Segurança ── */}
+          {step === 3 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Segurança</h2>
+                <p className="text-muted-foreground mt-1">Dados de acesso e contato</p>
+              </div>
+
+              <div className="relative">
+                <Input
+                  label="E-mail"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={form.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  error={errors.email}
+                  className="pl-10"
+                />
+                <Mail className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+              </div>
+
+              <div className="relative">
+                <Input
+                  label="Telefone"
+                  placeholder="(11) 99999-9999"
+                  value={form.phone}
+                  onChange={(e) => updateField('phone', maskPhone(e.target.value))}
+                  className="pl-10"
+                />
+                <Phone className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+              </div>
+
+              <div className="relative">
+                <Input
+                  label="Senha"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 8 caracteres"
+                  value={form.password}
+                  onChange={(e) => updateField('password', e.target.value)}
+                  error={errors.password}
+                  className="pl-10 pr-10"
+                />
+                <Lock className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+
+              <div className="relative">
+                <Input
+                  label="Confirmar senha"
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="Repita a senha"
+                  value={form.confirmPassword}
+                  onChange={(e) => updateField('confirmPassword', e.target.value)}
+                  error={errors.confirmPassword}
+                  className="pl-10 pr-10"
+                />
+                <Lock className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 4: Termos ── */}
+          {step === 4 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Termos e Condições</h2>
+                <p className="text-muted-foreground mt-1">Leia e aceite para finalizar seu cadastro</p>
+              </div>
+
+              {/* Termos de Uso */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Termos de Uso
+                </h3>
+                <div className="h-36 overflow-y-auto rounded-lg border border-input bg-muted/50 p-4 text-xs text-muted-foreground leading-relaxed">
+                  <p className="mb-2 font-semibold text-foreground">Termos de Uso — Nautify</p>
+                  <p className="mb-2">
+                    Ao utilizar a plataforma Nautify, você concorda com os seguintes termos e condições.
+                    A Nautify é uma plataforma de gestão de sociedades náuticas que permite o controle
+                    de embarcações compartilhadas, despesas, receitas, manutenção e operações.
+                  </p>
+                  <p className="mb-2">
+                    O usuário se compromete a fornecer informações verdadeiras e atualizadas durante
+                    o cadastro e uso da plataforma. É de responsabilidade do usuário manter a
+                    confidencialidade de suas credenciais de acesso.
+                  </p>
+                  <p className="mb-2">
+                    A plataforma reserva-se o direito de suspender ou cancelar contas que violem
+                    estes termos ou que utilizem o serviço de forma inadequada.
+                  </p>
+                  <p>
+                    Estes termos podem ser atualizados periodicamente, e o uso continuado da
+                    plataforma constitui aceite das alterações. Última atualização: Fevereiro 2026.
+                  </p>
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={form.acceptTerms}
+                    onChange={(e) => updateField('acceptTerms', e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary cursor-pointer"
+                  />
+                  <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+                    Li e aceito os <span className="font-medium text-primary">Termos de Uso</span>
+                  </span>
+                </label>
+                {errors.acceptTerms && (
+                  <p className="text-xs text-destructive">{errors.acceptTerms}</p>
+                )}
+              </div>
+
+              {/* Política de Privacidade */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-primary" />
+                  Política de Privacidade
+                </h3>
+                <div className="h-36 overflow-y-auto rounded-lg border border-input bg-muted/50 p-4 text-xs text-muted-foreground leading-relaxed">
+                  <p className="mb-2 font-semibold text-foreground">Política de Privacidade — Nautify</p>
+                  <p className="mb-2">
+                    A Nautify respeita sua privacidade e está comprometida com a proteção dos seus
+                    dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD).
+                  </p>
+                  <p className="mb-2">
+                    Coletamos apenas os dados necessários para o funcionamento da plataforma,
+                    incluindo: nome, e-mail, telefone, CPF/CNPJ, endereço e dados financeiros
+                    relacionados às embarcações cadastradas.
+                  </p>
+                  <p className="mb-2">
+                    Seus dados não serão compartilhados com terceiros sem seu consentimento
+                    explícito, exceto quando exigido por lei ou ordem judicial.
+                  </p>
+                  <p>
+                    Você pode solicitar a exclusão dos seus dados a qualquer momento entrando
+                    em contato com nosso suporte. Última atualização: Fevereiro 2026.
+                  </p>
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={form.acceptPrivacy}
+                    onChange={(e) => updateField('acceptPrivacy', e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary cursor-pointer"
+                  />
+                  <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+                    Li e aceito a <span className="font-medium text-primary">Política de Privacidade</span>
+                  </span>
+                </label>
+                {errors.acceptPrivacy && (
+                  <p className="text-xs text-destructive">{errors.acceptPrivacy}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Navigation ── */}
+          <div className="flex gap-3 mt-8">
+            {step > 1 && (
+              <Button variant="outline" onClick={prevStep} size="lg">
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Voltar
+              </Button>
+            )}
+            {step < 4 ? (
+              <Button onClick={nextStep} className="flex-1" size="lg">
+                Continuar
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} className="flex-1" size="lg" isLoading={isLoading}>
+                Criar conta
+              </Button>
+            )}
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
@@ -180,6 +648,7 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
+
         </div>
       </div>
     </div>

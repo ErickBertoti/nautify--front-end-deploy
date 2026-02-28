@@ -6,11 +6,14 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { allNavItems } from './Sidebar';
 import Image from 'next/image';
+import { useTheme } from '@/components/ThemeProvider';
 import {
   Menu,
   X,
   Bell,
   Search,
+  Sun,
+  Moon,
   Settings,
   LogOut,
   User,
@@ -81,6 +84,11 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'dark' : 'light');
+  };
 
   const closeMobileMenu = useCallback(() => {
     setIsClosing(true);
@@ -121,6 +129,13 @@ export function Header() {
           <button className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer">
             <Search className="h-5 w-5" />
           </button>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+          >
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
           <Link
             href="/notificacoes"
             className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative cursor-pointer"
@@ -159,7 +174,6 @@ export function Header() {
                   alt="Nautify"
                   width={36}
                   height={36}
-                  className="rounded-lg"
                 />
                 <h1 className="text-lg font-bold text-white">Nautify</h1>
               </div>

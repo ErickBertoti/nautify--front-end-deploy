@@ -5,6 +5,17 @@
 
 // --- Perfis de Usuário ---
 export type UserRole = 'admin' | 'socio' | 'marinheiro';
+export type DocumentType = 'cpf' | 'cnpj';
+
+export interface UserAddress {
+  cep: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
 
 export interface User {
   id: string;
@@ -12,6 +23,10 @@ export interface User {
   email: string;
   phone?: string;
   avatarUrl?: string;
+  documentType?: DocumentType;
+  document?: string;
+  birthDate?: string;
+  address?: UserAddress;
   createdAt: string;
 }
 
