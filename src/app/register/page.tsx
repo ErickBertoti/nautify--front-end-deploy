@@ -18,11 +18,15 @@ import {
   ChevronLeft,
   Calendar,
   Hash,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Input';
+import { fetchCep } from '@/lib/cep';
+import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
+import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
+import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
 
 // ============================================
 // Masks
@@ -71,23 +75,6 @@ const STEPS = [
   { number: 4, label: 'Termos' },
 ];
 
-const BR_STATES = [
-  { value: 'AC', label: 'AC' }, { value: 'AL', label: 'AL' },
-  { value: 'AP', label: 'AP' }, { value: 'AM', label: 'AM' },
-  { value: 'BA', label: 'BA' }, { value: 'CE', label: 'CE' },
-  { value: 'DF', label: 'DF' }, { value: 'ES', label: 'ES' },
-  { value: 'GO', label: 'GO' }, { value: 'MA', label: 'MA' },
-  { value: 'MT', label: 'MT' }, { value: 'MS', label: 'MS' },
-  { value: 'MG', label: 'MG' }, { value: 'PA', label: 'PA' },
-  { value: 'PB', label: 'PB' }, { value: 'PR', label: 'PR' },
-  { value: 'PE', label: 'PE' }, { value: 'PI', label: 'PI' },
-  { value: 'RJ', label: 'RJ' }, { value: 'RN', label: 'RN' },
-  { value: 'RS', label: 'RS' }, { value: 'RO', label: 'RO' },
-  { value: 'RR', label: 'RR' }, { value: 'SC', label: 'SC' },
-  { value: 'SP', label: 'SP' }, { value: 'SE', label: 'SE' },
-  { value: 'TO', label: 'TO' },
-];
-
 // ============================================
 // Component
 // ============================================
@@ -119,6 +106,37 @@ export default function RegisterPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCepLoading, setIsCepLoading] = useState(false);
+
+  async function handleCepChange(rawValue: string) {
+    const masked = maskCEP(rawValue);
+    updateField('cep', masked);
+    const digits = masked.replace(/\D/g, '');
+    if (digits.length === 8) {
+      setIsCepLoading(true);
+      const result = await fetchCep(digits);
+      setIsCepLoading(false);
+      if (result) {
+        setForm((prev) => ({
+          ...prev,
+          street: result.street || prev.street,
+          neighborhood: result.neighborhood || prev.neighborhood,
+          city: result.city || prev.city,
+          state: result.state || prev.state,
+        }));
+        setErrors((prev) => ({
+          ...prev,
+          street: '',
+          neighborhood: '',
+          city: '',
+          state: '',
+          cep: '',
+        }));
+      } else {
+        setErrors((prev) => ({ ...prev, cep: 'CEP não encontrado' }));
+      }
+    }
+  }
 
   function updateField(field: string, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -139,9 +157,12 @@ export default function RegisterPage() {
     const e: Record<string, string> = {};
     if (s === 1) {
       if (!form.name.trim()) e.name = 'Nome é obrigatório';
-      const digits = form.document.replace(/\D/g, '');
-      if (form.documentType === 'cpf' && digits.length !== 11) e.document = 'CPF deve ter 11 dígitos';
-      if (form.documentType === 'cnpj' && digits.length !== 14) e.document = 'CNPJ deve ter 14 dígitos';
+      else if (form.name.trim().split(/\s+/).length < 2) e.name = 'Informe nome e sobrenome';
+      if (form.documentType === 'cpf') {
+        if (!isValidCPF(form.document)) e.document = 'CPF inválido';
+      } else {
+        if (!isValidCNPJ(form.document)) e.document = 'CNPJ inválido';
+      }
       if (!form.birthDate) e.birthDate = 'Data de nascimento é obrigatória';
       else {
         const age = getAge();
@@ -158,8 +179,11 @@ export default function RegisterPage() {
     }
     if (s === 3) {
       if (!form.email.trim()) e.email = 'E-mail é obrigatório';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido';
-      if (form.password.length < 8) e.password = 'Mínimo 8 caracteres';
+      else if (!isValidEmail(form.email)) e.email = 'E-mail inválido';
+      if (form.phone && !isValidPhone(form.phone)) e.phone = 'Telefone inválido';
+      const strength = getPasswordStrength(form.password);
+      if (!form.password) e.password = 'Senha é obrigatória';
+      else if (strength.score < 3) e.password = 'Senha muito fraca — atenda pelo menos 3 requisitos';
       if (form.password !== form.confirmPassword) e.confirmPassword = 'As senhas não coincidem';
     }
     if (s === 4) {
@@ -196,17 +220,22 @@ export default function RegisterPage() {
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 800 800">
             <defs>
-              <pattern id="waves" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+              <pattern id="reg-waves" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
                 <path d="M0 100 Q50 50 100 100 T200 100" fill="none" stroke="white" strokeWidth="1" />
                 <path d="M0 150 Q50 100 100 150 T200 150" fill="none" stroke="white" strokeWidth="0.5" />
               </pattern>
             </defs>
-            <rect width="800" height="800" fill="url(#waves)" />
+            <rect width="800" height="800" fill="url(#reg-waves)" />
           </svg>
         </div>
-        <div className="relative z-10 flex flex-col justify-center px-16">
+
+        {/* Decorative circles */}
+        <div className="absolute top-16 right-16 w-28 h-28 rounded-full bg-white/5 animate-fade-in" style={{ animationDelay: '600ms' }} />
+        <div className="absolute bottom-24 right-28 w-16 h-16 rounded-full bg-nautify-400/10 animate-fade-in" style={{ animationDelay: '800ms' }} />
+
+        <div className="relative z-10 flex flex-col justify-center px-16 animate-stagger">
           <div className="flex items-center gap-3 mb-8">
-            <Image src="/logo-white.png" alt="Nautify" width={56} height={56} />
+            <Image src="/logo-white.png" alt="Nautify" width={56} height={56} className="drop-shadow-lg" />
             <div>
               <h1 className="text-3xl font-bold text-white">Nautify</h1>
               <p className="text-sm text-nautify-300">Gestão de Sociedades Náuticas</p>
@@ -225,20 +254,20 @@ export default function RegisterPage() {
               <div
                 key={s.number}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all',
+                  'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-300',
                   step === s.number ? 'bg-white/10 text-white' :
                   step > s.number ? 'text-nautify-400' : 'text-nautify-700'
                 )}
               >
                 <div className={cn(
-                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold',
+                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300',
                   step > s.number ? 'bg-nautify-400/20 text-nautify-400' :
                   step === s.number ? 'bg-white/20 text-white' : 'bg-white/5 text-nautify-700'
                 )}>
                   {step > s.number ? <Check className="h-3.5 w-3.5" /> : s.number}
                 </div>
                 <span className="text-sm font-medium">{s.label}</span>
-                {step === s.number && <ChevronRight className="h-4 w-4 ml-auto" />}
+                {step === s.number && <ChevronRight className="h-4 w-4 ml-auto animate-fade-in" />}
               </div>
             ))}
           </div>
@@ -246,40 +275,43 @@ export default function RegisterPage() {
       </div>
 
       {/* ── Right panel ── */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-8 overflow-y-auto">
+      <div className="flex-1 flex flex-col justify-center px-5 py-6 sm:px-6 sm:py-8 overflow-y-auto">
         <div className="w-full max-w-lg mx-auto">
 
           {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-6 lg:hidden">
+          <div className="flex items-center gap-3 mb-6 lg:hidden animate-fade-up">
             <Image src="/logo-blue.png" alt="Nautify" width={40} height={40} />
             <h1 className="text-2xl font-bold text-foreground">Nautify</h1>
           </div>
 
           {/* Step indicator */}
-          <div className="flex items-center justify-between mb-8 gap-1 sm:gap-3">
+          <div className="flex items-center justify-between mb-8 gap-1 sm:gap-3 animate-fade-up" style={{ animationDelay: '50ms' }}>
             {STEPS.map((s, i) => (
               <React.Fragment key={s.number}>
                 <div className="flex flex-col items-center gap-1">
                   <div className={cn(
-                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-300',
-                    step > s.number ? 'bg-success text-success-foreground' :
-                    step === s.number ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25' :
-                    'bg-muted text-muted-foreground'
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold',
+                    'transition-all duration-300 ease-out',
+                    step > s.number ? 'bg-success text-success-foreground scale-100' :
+                    step === s.number ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110' :
+                    'bg-muted text-muted-foreground scale-100'
                   )}>
                     {step > s.number ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : s.number}
                   </div>
                   <span className={cn(
-                    'text-[10px] sm:text-xs font-medium transition-colors',
+                    'text-[10px] sm:text-xs font-medium transition-colors duration-300',
                     step === s.number ? 'text-primary' : 'text-muted-foreground'
                   )}>
                     {s.label}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={cn(
-                    'flex-1 h-0.5 rounded-full transition-colors duration-300',
-                    step > s.number ? 'bg-success' : 'bg-muted'
-                  )} />
+                  <div className="flex-1 h-0.5 rounded-full bg-muted overflow-hidden">
+                    <div className={cn(
+                      'h-full rounded-full transition-all duration-500 ease-out',
+                      step > s.number ? 'w-full bg-success' : 'w-0 bg-success'
+                    )} />
+                  </div>
                 )}
               </React.Fragment>
             ))}
@@ -287,7 +319,7 @@ export default function RegisterPage() {
 
           {/* ── Step 1: Dados Pessoais ── */}
           {step === 1 && (
-            <div className="space-y-5">
+            <div key="step-1" className="space-y-5 animate-step-enter">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Dados Pessoais</h2>
                 <p className="text-muted-foreground mt-1">Informações básicas sobre você</p>
@@ -377,7 +409,7 @@ export default function RegisterPage() {
 
           {/* ── Step 2: Endereço ── */}
           {step === 2 && (
-            <div className="space-y-5">
+            <div key="step-2" className="space-y-5 animate-step-enter">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Endereço</h2>
                 <p className="text-muted-foreground mt-1">Informe seu endereço completo</p>
@@ -388,11 +420,14 @@ export default function RegisterPage() {
                   label="CEP"
                   placeholder="00000-000"
                   value={form.cep}
-                  onChange={(e) => updateField('cep', maskCEP(e.target.value))}
+                  onChange={(e) => handleCepChange(e.target.value)}
                   error={errors.cep}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                 />
                 <MapPin className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+                {isCepLoading && (
+                  <Loader2 className="absolute right-3 top-[38px] h-4 w-4 text-muted-foreground animate-spin" />
+                )}
               </div>
 
               <Input
@@ -432,28 +467,36 @@ export default function RegisterPage() {
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
+                <CityAutocomplete
                   label="Cidade"
-                  placeholder="Nome da cidade"
                   value={form.city}
-                  onChange={(e) => updateField('city', e.target.value)}
+                  onChange={(city) => updateField('city', city)}
+                  onSelectCity={(city, uf) => {
+                    updateField('city', city);
+                    updateField('state', uf);
+                  }}
                   error={errors.city}
                 />
-                <Select
-                  label="Estado"
-                  placeholder="Selecione"
-                  value={form.state}
-                  onChange={(e) => updateField('state', e.target.value)}
-                  options={BR_STATES}
-                  error={errors.state}
-                />
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground">Estado</label>
+                  <div
+                    className={cn(
+                      'flex h-10 w-full items-center rounded-lg border border-input bg-muted/50 px-3 text-sm',
+                      !form.state && 'text-muted-foreground',
+                      errors.state && 'border-destructive'
+                    )}
+                  >
+                    {form.state || 'Preenchido automaticamente'}
+                  </div>
+                  {errors.state && <p className="text-xs text-destructive">{errors.state}</p>}
+                </div>
               </div>
             </div>
           )}
 
           {/* ── Step 3: Segurança ── */}
           {step === 3 && (
-            <div className="space-y-5">
+            <div key="step-3" className="space-y-5 animate-step-enter">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Segurança</h2>
                 <p className="text-muted-foreground mt-1">Dados de acesso e contato</p>
@@ -478,6 +521,7 @@ export default function RegisterPage() {
                   placeholder="(11) 99999-9999"
                   value={form.phone}
                   onChange={(e) => updateField('phone', maskPhone(e.target.value))}
+                  error={errors.phone}
                   className="pl-10"
                 />
                 <Phone className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
@@ -503,6 +547,8 @@ export default function RegisterPage() {
                 </button>
               </div>
 
+              <PasswordStrengthBar password={form.password} />
+
               <div className="relative">
                 <Input
                   label="Confirmar senha"
@@ -527,7 +573,7 @@ export default function RegisterPage() {
 
           {/* ── Step 4: Termos ── */}
           {step === 4 && (
-            <div className="space-y-5">
+            <div key="step-4" className="space-y-5 animate-step-enter">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Termos e Condições</h2>
                 <p className="text-muted-foreground mt-1">Leia e aceite para finalizar seu cadastro</p>
@@ -621,7 +667,7 @@ export default function RegisterPage() {
           )}
 
           {/* ── Navigation ── */}
-          <div className="flex gap-3 mt-8">
+          <div className="flex gap-3 mt-8 animate-fade-up" style={{ animationDelay: '150ms' }}>
             {step > 1 && (
               <Button variant="outline" onClick={prevStep} size="lg">
                 <ChevronLeft className="h-4 w-4 mr-1" />
@@ -640,7 +686,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center animate-fade-in" style={{ animationDelay: '300ms' }}>
             <p className="text-sm text-muted-foreground">
               Já tem uma conta?{' '}
               <Link href="/login" className="text-primary font-medium hover:underline">

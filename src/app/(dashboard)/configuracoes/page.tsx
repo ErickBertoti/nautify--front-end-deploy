@@ -14,13 +14,17 @@ import {
   Save,
   Camera,
   Shield,
-  Building2,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { fetchCep } from '@/lib/cep';
+import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
+import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
+import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
+import { useToast } from '@/components/ui/Toast';
 
 // ============================================
 // Masks (same as register)
@@ -59,23 +63,6 @@ function maskPhone(value: string) {
     .replace(/(\d{5})(\d)/, '$1-$2');
 }
 
-const BR_STATES = [
-  { value: 'AC', label: 'AC' }, { value: 'AL', label: 'AL' },
-  { value: 'AP', label: 'AP' }, { value: 'AM', label: 'AM' },
-  { value: 'BA', label: 'BA' }, { value: 'CE', label: 'CE' },
-  { value: 'DF', label: 'DF' }, { value: 'ES', label: 'ES' },
-  { value: 'GO', label: 'GO' }, { value: 'MA', label: 'MA' },
-  { value: 'MT', label: 'MT' }, { value: 'MS', label: 'MS' },
-  { value: 'MG', label: 'MG' }, { value: 'PA', label: 'PA' },
-  { value: 'PB', label: 'PB' }, { value: 'PR', label: 'PR' },
-  { value: 'PE', label: 'PE' }, { value: 'PI', label: 'PI' },
-  { value: 'RJ', label: 'RJ' }, { value: 'RN', label: 'RN' },
-  { value: 'RS', label: 'RS' }, { value: 'RO', label: 'RO' },
-  { value: 'RR', label: 'RR' }, { value: 'SC', label: 'SC' },
-  { value: 'SP', label: 'SP' }, { value: 'SE', label: 'SE' },
-  { value: 'TO', label: 'TO' },
-];
-
 type TabKey = 'pessoal' | 'endereco' | 'seguranca';
 
 // ============================================
@@ -86,7 +73,7 @@ export default function ConfiguracoesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const toast = useToast();
 
   // Mock user data (will come from API)
   const [profile, setProfile] = useState({
@@ -113,16 +100,46 @@ export default function ConfiguracoesPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [isCepLoading, setIsCepLoading] = useState(false);
+
+  async function handleCepChange(rawValue: string) {
+    const masked = maskCEP(rawValue);
+    updateProfile('cep', masked);
+    const digits = masked.replace(/\D/g, '');
+    if (digits.length === 8) {
+      setIsCepLoading(true);
+      const result = await fetchCep(digits);
+      setIsCepLoading(false);
+      if (result) {
+        setProfile((prev) => ({
+          ...prev,
+          street: result.street || prev.street,
+          neighborhood: result.neighborhood || prev.neighborhood,
+          city: result.city || prev.city,
+          state: result.state || prev.state,
+        }));
+        setErrors((prev) => ({
+          ...prev,
+          street: '',
+          neighborhood: '',
+          city: '',
+          state: '',
+          cep: '',
+        }));
+      } else {
+        setErrors((prev) => ({ ...prev, cep: 'CEP não encontrado' }));
+      }
+    }
+  }
+
   function updateProfile(field: string, value: string) {
     setProfile((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: '' }));
-    setSuccessMessage('');
   }
 
   function updatePassword(field: string, value: string) {
     setPasswords((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: '' }));
-    setSuccessMessage('');
   }
 
   function getAge(): number | null {
@@ -140,12 +157,16 @@ export default function ConfiguracoesPage() {
 
     if (activeTab === 'pessoal') {
       if (!profile.name.trim()) e.name = 'Nome é obrigatório';
-      const digits = profile.document.replace(/\D/g, '');
-      if (profile.documentType === 'cpf' && digits.length !== 11) e.document = 'CPF inválido';
-      if (profile.documentType === 'cnpj' && digits.length !== 14) e.document = 'CNPJ inválido';
+      else if (profile.name.trim().split(/\s+/).length < 2) e.name = 'Informe nome e sobrenome';
+      if (profile.documentType === 'cpf') {
+        if (!isValidCPF(profile.document)) e.document = 'CPF inválido';
+      } else {
+        if (!isValidCNPJ(profile.document)) e.document = 'CNPJ inválido';
+      }
       if (!profile.birthDate) e.birthDate = 'Data de nascimento é obrigatória';
       if (!profile.email.trim()) e.email = 'E-mail é obrigatório';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) e.email = 'E-mail inválido';
+      else if (!isValidEmail(profile.email)) e.email = 'E-mail inválido';
+      if (profile.phone && !isValidPhone(profile.phone)) e.phone = 'Telefone inválido';
     }
 
     if (activeTab === 'endereco') {
@@ -160,7 +181,9 @@ export default function ConfiguracoesPage() {
 
     if (activeTab === 'seguranca') {
       if (!passwords.current) e.current = 'Senha atual é obrigatória';
-      if (passwords.newPassword.length < 8) e.newPassword = 'Mínimo 8 caracteres';
+      const strength = getPasswordStrength(passwords.newPassword);
+      if (!passwords.newPassword) e.newPassword = 'Nova senha é obrigatória';
+      else if (strength.score < 3) e.newPassword = 'Senha muito fraca — atenda pelo menos 3 requisitos';
       if (passwords.newPassword !== passwords.confirm) e.confirm = 'As senhas não coincidem';
     }
 
@@ -171,7 +194,7 @@ export default function ConfiguracoesPage() {
     // TODO: Integrar com API Go
     setTimeout(() => {
       setIsSaving(false);
-      setSuccessMessage('Alterações salvas com sucesso!');
+      toast.success('Alterações salvas com sucesso!');
       if (activeTab === 'seguranca') {
         setPasswords({ current: '', newPassword: '', confirm: '' });
       }
@@ -233,7 +256,6 @@ export default function ConfiguracoesPage() {
               onClick={() => {
                 setActiveTab(tab.key);
                 setErrors({});
-                setSuccessMessage('');
               }}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap flex-shrink-0',
@@ -249,14 +271,6 @@ export default function ConfiguracoesPage() {
           );
         })}
       </div>
-
-      {/* Success message */}
-      {successMessage && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 text-success text-sm">
-          <Save className="h-4 w-4" />
-          {successMessage}
-        </div>
-      )}
 
       {/* Tab content */}
       {activeTab === 'pessoal' && (
@@ -387,11 +401,14 @@ export default function ConfiguracoesPage() {
                   label="CEP"
                   placeholder="00000-000"
                   value={profile.cep}
-                  onChange={(e) => updateProfile('cep', maskCEP(e.target.value))}
+                  onChange={(e) => handleCepChange(e.target.value)}
                   error={errors.cep}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                 />
                 <MapPin className="absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+                {isCepLoading && (
+                  <Loader2 className="absolute right-3 top-[38px] h-4 w-4 text-muted-foreground animate-spin" />
+                )}
               </div>
               <div className="lg:col-span-2">
                 <Input
@@ -422,31 +439,39 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
+            <Input
+              label="Bairro"
+              placeholder="Nome do bairro"
+              value={profile.neighborhood}
+              onChange={(e) => updateProfile('neighborhood', e.target.value)}
+              error={errors.neighborhood}
+            />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <Input
-                label="Bairro"
-                placeholder="Nome do bairro"
-                value={profile.neighborhood}
-                onChange={(e) => updateProfile('neighborhood', e.target.value)}
-                error={errors.neighborhood}
-              />
-              <Input
+              <CityAutocomplete
                 label="Cidade"
-                placeholder="Nome da cidade"
                 value={profile.city}
-                onChange={(e) => updateProfile('city', e.target.value)}
+                onChange={(city) => updateProfile('city', city)}
+                onSelectCity={(city, uf) => {
+                  updateProfile('city', city);
+                  updateProfile('state', uf);
+                }}
                 error={errors.city}
               />
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">Estado</label>
+                <div
+                  className={cn(
+                    'flex h-10 w-full items-center rounded-lg border border-input bg-muted/50 px-3 text-sm',
+                    !profile.state && 'text-muted-foreground',
+                    errors.state && 'border-destructive'
+                  )}
+                >
+                  {profile.state || 'Preenchido automaticamente'}
+                </div>
+                {errors.state && <p className="text-xs text-destructive">{errors.state}</p>}
+              </div>
             </div>
-
-            <Select
-              label="Estado"
-              placeholder="Selecione"
-              value={profile.state}
-              onChange={(e) => updateProfile('state', e.target.value)}
-              options={BR_STATES}
-              error={errors.state}
-            />
 
             <div className="flex justify-end pt-2">
               <Button onClick={validateAndSave} isLoading={isSaving}>
@@ -512,6 +537,8 @@ export default function ConfiguracoesPage() {
                 )}
               </button>
             </div>
+
+            <PasswordStrengthBar password={passwords.newPassword} />
 
             <div className="relative">
               <Input

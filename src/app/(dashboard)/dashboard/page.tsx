@@ -102,7 +102,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome + Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Olá, Gabriel!</h1>
           <p className="text-muted-foreground">
@@ -124,7 +124,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-stagger">
         <StatCard
           title="Receitas do Mês"
           value={formatCurrency(mockStats.totalRevenueMonth)}

@@ -135,8 +135,7 @@ export function Sidebar() {
                 />
               </button>
               {!isCollapsed && (
-                <div className="animate-collapse-open">
-                  <div className="space-y-0.5 overflow-hidden">
+                <div className="space-y-0.5 overflow-hidden animate-collapse-open">
                     {group.items.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
@@ -144,19 +143,21 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                          'relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isActive
                             ? 'bg-nautify-700/50 text-white'
                             : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white'
                         )}
                       >
+                        {isActive && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-nautify-400" />
+                        )}
                         <item.icon className={cn('h-4.5 w-4.5', isActive ? 'text-nautify-400' : '')} />
                         {item.label}
                         {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-nautify-400" />}
                       </Link>
                     );
                   })}
-                  </div>
                 </div>
               )}
             </div>
