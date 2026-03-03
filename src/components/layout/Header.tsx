@@ -125,7 +125,7 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 backdrop-blur-md px-4 lg:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-card/70 backdrop-blur-lg px-4 lg:px-6 transition-colors duration-300">
         {/* Mobile menu button */}
         <button
           className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer"

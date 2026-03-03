@@ -121,17 +121,15 @@ export default function SociosPage() {
       <div className="flex gap-1 border-b border-border">
         <button
           onClick={() => setTab('socios')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
-            tab === 'socios' ? 'border-nautify-600 text-nautify-600' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors cursor-pointer ${tab === 'socios' ? 'border-nautify-600 text-nautify-600' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           Sócios
         </button>
         <button
           onClick={() => setTab('contribuicoes')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
-            tab === 'contribuicoes' ? 'border-nautify-600 text-nautify-600' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors cursor-pointer ${tab === 'contribuicoes' ? 'border-nautify-600 text-nautify-600' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           Contribuições
         </button>
@@ -247,7 +245,7 @@ export default function SociosPage() {
             <Input label="E-mail" type="email" placeholder="email@exemplo.com" required />
             <Input label="Telefone" placeholder="(11) 99999-9999" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select label="Embarcação">
               <option value="1">Mar Azul</option>
               <option value="2">Veleiro Sol</option>
@@ -259,11 +257,11 @@ export default function SociosPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Participação (%)" type="number" placeholder="0" required />
-            <Input label="Contribuição Mensal (R$)" type="number" placeholder="0,00" required />
+            <Input label="Mensalidade (R$)" type="number" placeholder="0,00" required />
           </div>
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" className="flex-1">Adicionar Sócio</Button>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button type="submit">Adicionar Sócio</Button>
           </div>
         </form>
       </Modal>

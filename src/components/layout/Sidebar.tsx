@@ -91,7 +91,7 @@ export function Sidebar() {
     setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
 
   return (
-    <aside className="fixed left-0 top-0 z-40 hidden lg:flex h-screen w-64 flex-col bg-sidebar-bg text-sidebar-foreground">
+    <aside className="fixed left-0 top-0 z-40 hidden lg:flex h-screen w-64 flex-col bg-sidebar-bg/95 backdrop-blur-md border-r border-white/5 text-sidebar-foreground transition-all duration-300">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
         <Image
@@ -136,7 +136,7 @@ export function Sidebar() {
               </button>
               {!isCollapsed && (
                 <div className="space-y-0.5 overflow-hidden animate-collapse-open">
-                    {group.items.map((item) => {
+                  {group.items.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
                       <Link

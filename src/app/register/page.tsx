@@ -213,10 +213,10 @@ export default function RegisterPage() {
   const age = getAge();
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-background">
 
       {/* ── Left panel ── */}
-      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-nautify-950 via-nautify-900 to-nautify-800 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-[45%] bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-nautify-900 via-nautify-950 to-[#0a1128] relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 800 800">
             <defs>
@@ -230,20 +230,21 @@ export default function RegisterPage() {
         </div>
 
         {/* Decorative circles */}
-        <div className="absolute top-16 right-16 w-28 h-28 rounded-full bg-white/5 animate-fade-in" style={{ animationDelay: '600ms' }} />
-        <div className="absolute bottom-24 right-28 w-16 h-16 rounded-full bg-nautify-400/10 animate-fade-in" style={{ animationDelay: '800ms' }} />
+        <div className="absolute top-16 right-16 w-36 h-36 rounded-full bg-nautify-400/20 blur-3xl animate-fade-in" style={{ animationDelay: '600ms' }} />
+        <div className="absolute bottom-24 right-28 w-48 h-48 rounded-full bg-primary/20 blur-3xl animate-fade-in" style={{ animationDelay: '800ms' }} />
+        <div className="absolute top-1/2 left-1/4 w-32 h-32 rounded-full bg-nautify-300/10 blur-2xl animate-fade-in" style={{ animationDelay: '1000ms' }} />
 
         <div className="relative z-10 flex flex-col justify-center px-16 animate-stagger">
           <div className="flex items-center gap-3 mb-8">
             <Image src="/logo-white.png" alt="Nautify" width={56} height={56} className="drop-shadow-lg" />
             <div>
-              <h1 className="text-3xl font-bold text-white">Nautify</h1>
-              <p className="text-sm text-nautify-300">Gestão de Sociedades Náuticas</p>
+              <h1 className="text-3xl font-bold text-white tracking-wide">Nautify</h1>
+              <p className="text-sm text-accent-gold-foreground/90 uppercase tracking-widest font-medium">Gestão Náutica</p>
             </div>
           </div>
-          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-4">
             Comece a gerenciar<br />sua embarcação<br />
-            <span className="text-nautify-400">de forma profissional</span>
+            <span className="text-accent-gold italic pr-2">de forma profissional</span>
           </h2>
           <p className="text-lg text-nautify-200/80 max-w-md">
             Crie sua conta gratuita e adicione sua primeira embarcação em minutos.
@@ -256,13 +257,13 @@ export default function RegisterPage() {
                 className={cn(
                   'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-300',
                   step === s.number ? 'bg-white/10 text-white' :
-                  step > s.number ? 'text-nautify-400' : 'text-nautify-700'
+                    step > s.number ? 'text-nautify-400' : 'text-nautify-700'
                 )}
               >
                 <div className={cn(
                   'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300',
-                  step > s.number ? 'bg-nautify-400/20 text-nautify-400' :
-                  step === s.number ? 'bg-white/20 text-white' : 'bg-white/5 text-nautify-700'
+                  step > s.number ? 'bg-accent-gold/20 text-accent-gold' :
+                    step === s.number ? 'bg-white/20 text-white' : 'bg-white/5 text-nautify-700'
                 )}>
                   {step > s.number ? <Check className="h-3.5 w-3.5" /> : s.number}
                 </div>
@@ -275,12 +276,14 @@ export default function RegisterPage() {
       </div>
 
       {/* ── Right panel ── */}
-      <div className="flex-1 flex flex-col justify-center px-5 py-6 sm:px-6 sm:py-8 overflow-y-auto">
-        <div className="w-full max-w-lg mx-auto">
+      <div className="flex-1 flex flex-col justify-center px-5 py-6 sm:px-6 sm:py-8 overflow-y-auto relative z-10 bg-grid-pattern">
+        <div className="w-full max-w-lg mx-auto glass-panel rounded-2xl p-6 sm:p-8 border-t border-t-white/40 shadow-2xl">
 
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-6 lg:hidden animate-fade-up">
-            <Image src="/logo-blue.png" alt="Nautify" width={40} height={40} />
+            <div className="p-2 rounded-xl bg-primary/10">
+              <Image src="/logo-blue.png" alt="Nautify" width={32} height={32} />
+            </div>
             <h1 className="text-2xl font-bold text-foreground">Nautify</h1>
           </div>
 
@@ -293,8 +296,8 @@ export default function RegisterPage() {
                     'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold',
                     'transition-all duration-300 ease-out',
                     step > s.number ? 'bg-success text-success-foreground scale-100' :
-                    step === s.number ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110' :
-                    'bg-muted text-muted-foreground scale-100'
+                      step === s.number ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110' :
+                        'bg-muted text-muted-foreground scale-100'
                   )}>
                     {step > s.number ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : s.number}
                   </div>
@@ -689,7 +692,7 @@ export default function RegisterPage() {
           <div className="mt-6 text-center animate-fade-in" style={{ animationDelay: '300ms' }}>
             <p className="text-sm text-muted-foreground">
               Já tem uma conta?{' '}
-              <Link href="/login" className="text-primary font-medium hover:underline">
+              <Link href="/login" className="text-primary font-medium hover:underline hover:text-primary/80 transition-colors">
                 Fazer login
               </Link>
             </p>

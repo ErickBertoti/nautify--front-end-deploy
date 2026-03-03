@@ -106,9 +106,8 @@ export default function AgendaPage() {
           <button
             key={type}
             onClick={() => setFilterType(filterType === type ? '' : type)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-              filterType === type ? config.bgColor + ' ring-2 ring-offset-1' : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${filterType === type ? config.bgColor + ' ring-2 ring-offset-1' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
           >
             <div className={`w-2.5 h-2.5 rounded-full ${config.color}`} />
             {config.label}
@@ -145,9 +144,8 @@ export default function AgendaPage() {
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[48px] sm:min-h-[80px] p-0.5 sm:p-1 border border-border/50 rounded transition-colors ${
-                      day ? 'hover:bg-muted/50' : 'bg-muted/20'
-                    } ${isToday ? 'bg-nautify-50/50 border-nautify-200' : ''}`}
+                    className={`min-h-[48px] sm:min-h-[80px] p-0.5 sm:p-1 border border-border/50 rounded transition-colors ${day ? 'hover:bg-muted/50' : 'bg-muted/20'
+                      } ${isToday ? 'bg-nautify-50/50 border-nautify-200' : ''}`}
                   >
                     {day && (
                       <>
@@ -196,25 +194,25 @@ export default function AgendaPage() {
                 return (
                   <div key={event.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3 sm:gap-4">
-                    <div className={`w-1.5 h-10 sm:h-14 rounded-full shrink-0 ${config?.color || 'bg-gray-500'}`} />
-                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${config?.bgColor || 'bg-gray-50'}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{event.title}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(event.startDate).toLocaleDateString('pt-BR')} {new Date(event.startDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Ship className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{event.boatName}</span>
+                      <div className={`w-1.5 h-10 sm:h-14 rounded-full shrink-0 ${config?.color || 'bg-gray-500'}`} />
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${config?.bgColor || 'bg-gray-50'}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{event.title}</p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(event.startDate).toLocaleDateString('pt-BR')} {new Date(event.startDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Ship className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{event.boatName}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
                     </div>
                     <div className="flex items-center gap-2 ml-[52px] sm:ml-0 shrink-0">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config?.bgColor}`}>{config?.label}</span>
@@ -251,9 +249,9 @@ export default function AgendaPage() {
             <Input label="Fim" type="datetime-local" required />
           </div>
           <Textarea label="Descrição" placeholder="Detalhes do evento..." rows={3} />
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" className="flex-1">Criar Evento</Button>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button type="submit">Criar Evento</Button>
           </div>
         </form>
       </Modal>
