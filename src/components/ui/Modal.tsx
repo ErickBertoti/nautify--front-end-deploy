@@ -68,8 +68,9 @@ export function Modal({ isOpen, onClose, title, description, className, children
       />
       <div
         className={cn(
-          'relative z-50 w-full max-w-lg mx-4 sm:mx-auto rounded-xl bg-card border border-border shadow-xl',
+          'relative z-50 w-full max-w-lg mx-4 sm:mx-auto rounded-xl bg-card/95 backdrop-blur-md border border-border/50 shadow-2xl',
           'max-h-[85vh] overflow-y-auto',
+          'before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-transparent before:via-accent-gold/40 before:to-transparent',
           isClosing ? 'animate-modal-out' : 'animate-modal-in',
           className
         )}
@@ -77,7 +78,7 @@ export function Modal({ isOpen, onClose, title, description, className, children
         {(title || description) && (
           <div className="flex items-start justify-between px-6 pt-6 pb-2">
             <div>
-              {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
+              {title && <h2 className="text-xl font-bold text-foreground !font-heading">{title}</h2>}
               {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
             </div>
             <button

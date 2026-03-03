@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Ship, Plus, Users, MapPin, Search, MoreVertical, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -209,22 +209,20 @@ export default function EmbarcacoesPage() {
         <form className="space-y-4 mt-4">
           <Input label="Nome da embarcação" placeholder="Ex: Mar Azul" required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-foreground">Tipo</label>
-              <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="lancha">Lancha</option>
-                <option value="jet">Jet Ski</option>
-                <option value="veleiro">Veleiro</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
+            <Select label="Tipo" placeholder="Selecione o tipo">
+              <option value="lancha">Lancha</option>
+              <option value="jet">Jet Ski</option>
+              <option value="veleiro">Veleiro</option>
+              <option value="outro">Outro</option>
+            </Select>
             <Input label="Ano" type="number" placeholder="2024" />
           </div>
-          <Input label="Modelo" placeholder="Ex: Phantom 303" />
-          <Input label="Nº Registro" placeholder="Ex: BR-SP-12345" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Marina" placeholder="Nome da marina" />
-            <Input label="Localização" placeholder="Cidade, UF" />
+            <Input label="Modelo" placeholder="Ex: Phantom 303" />
+            <Input label="Nº Registro" placeholder="Ex: BR-SP-12345" />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <Input label="Marina / Localização" placeholder="Ex: Marina Guarujá — Guarujá, SP" />
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>

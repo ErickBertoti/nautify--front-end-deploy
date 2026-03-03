@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { allNavItems } from './Sidebar';
 import Image from 'next/image';
+import { useTheme } from '@/components/ThemeProvider';
 import {
   Menu,
   X,
   Bell,
   Search,
+  Sun,
+  Moon,
   Settings,
   LogOut,
   User,
@@ -27,6 +30,7 @@ import {
   Users,
   FileText,
   BarChart2,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -80,7 +84,14 @@ const mobileNavGroups: NavGroup[] = [
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'dark' : 'light');
+  };
 
   const closeMobileMenu = useCallback(() => {
     setIsClosing(true);
@@ -93,8 +104,20 @@ export function Header() {
   // Close sidebar on route change
   useEffect(() => {
     if (mobileMenuOpen) closeMobileMenu();
+    setUserMenuOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [userMenuOpen]);
 
   const currentPage = allNavItems.find(
     (item) => pathname === item.href || pathname.startsWith(item.href + '/')
@@ -102,7 +125,7 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 backdrop-blur-md px-4 lg:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-card/70 backdrop-blur-lg px-4 lg:px-6 transition-colors duration-300">
         {/* Mobile menu button */}
         <button
           className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer"
@@ -121,6 +144,13 @@ export function Header() {
           <button className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer">
             <Search className="h-5 w-5" />
           </button>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+          >
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
           <Link
             href="/notificacoes"
             className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative cursor-pointer"
@@ -129,12 +159,57 @@ export function Header() {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
           </Link>
           <div className="w-px h-6 bg-border mx-1" />
-          <button className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-nautify-100 flex items-center justify-center">
-              <User className="h-4 w-4 text-nautify-700" />
-            </div>
-            <span className="hidden sm:block text-sm font-medium">Gabriel</span>
-          </button>
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen((v) => !v)}
+              className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-full bg-nautify-100 flex items-center justify-center">
+                <User className="h-4 w-4 text-nautify-700" />
+              </div>
+              <span className="hidden sm:block text-sm font-medium">Gabriel</span>
+              <ChevronDown className={cn('hidden sm:block h-3.5 w-3.5 text-muted-foreground transition-transform duration-200', userMenuOpen && 'rotate-180')} />
+            </button>
+
+            {userMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-border bg-card shadow-xl animate-dropdown-in origin-top-right z-50">
+                {/* User info */}
+                <div className="px-4 py-3 border-b border-border">
+                  <p className="text-sm font-semibold text-foreground">Gabriel</p>
+                  <p className="text-xs text-muted-foreground truncate">gabriel@email.com</p>
+                </div>
+                {/* Menu items */}
+                <div className="py-1.5">
+                  <Link
+                    href="/configuracoes"
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    Meu Perfil
+                  </Link>
+                  <Link
+                    href="/configuracoes"
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                    Configurações
+                  </Link>
+                </div>
+                <div className="border-t border-border py-1.5">
+                  <Link
+                    href="/login"
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -159,7 +234,6 @@ export function Header() {
                   alt="Nautify"
                   width={36}
                   height={36}
-                  className="rounded-lg"
                 />
                 <h1 className="text-lg font-bold text-white">Nautify</h1>
               </div>

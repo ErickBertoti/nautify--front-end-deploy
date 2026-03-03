@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+**Nautify — Front-end**
 
-## Getting Started
+- **Descrição:** Interface web do projeto Nautify, um painel de gestão para operações relacionadas a embarcações, financeiro e manutenção.
+- **Stack:** Next.js + TypeScript + React.
 
-First, run the development server:
+**Como rodar (desenvolvimento)**
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra http://localhost:3000 no navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Comandos úteis**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Instalar dependências: `npm install`
+- Rodar em modo desenvolvimento: `npm run dev`
+- Build de produção: `npm run build`
+- Iniciar build: `npm run start`
 
-## Learn More
+**Contexto do repositório**
 
-To learn more about Next.js, take a look at the following resources:
+Este repositório contém apenas a aplicação front-end. A comunicação com APIs externas e serviços está localizada em `src/lib` e `src/services`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Direitos reservados**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Reservamos todos os direitos sobre este código e todo o material aqui presente. © "Nautify". Todos os direitos reservados.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Se precisar de mais informações sobre a arquitetura ou queira que eu adicione um guia de contribuição, me avise.

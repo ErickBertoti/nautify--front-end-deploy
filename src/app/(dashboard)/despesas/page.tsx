@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Receipt,
   Plus,
@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { DataTable, type Column } from '@/components/shared/DataTable';
+import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import type { Expense } from '@/types';
 
@@ -123,6 +125,7 @@ export default function DespesasPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('todas');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
+  const toast = useToast();
 
   const filtered = mockExpenses.filter((e) => {
     const matchesSearch = e.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -138,6 +141,88 @@ export default function DespesasPage() {
   const totalPaid = mockExpenses
     .filter((e) => e.status === 'paga')
     .reduce((sum, e) => sum + e.amount, 0);
+
+  // DataTable columns
+  const columns: Column<Expense & Record<string, unknown>>[] = useMemo(() => [
+    {
+      key: 'description',
+      header: 'Descrição',
+      sortable: true,
+      render: (row) => (
+        <div>
+          <p className="text-sm font-medium text-foreground">{row.description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Criado em {formatDate(row.createdAt)}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Categoria',
+      sortable: true,
+      render: (row) => (
+        <div>
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColors[row.category]}`}>
+            {categoryLabels[row.category]}
+          </span>
+          {row.individualMode && (
+            <span className="block text-[10px] text-muted-foreground mt-0.5">
+              {row.individualMode === 'exclusivo' ? 'Exclusivo' : 'Rateado'}
+            </span>
+          )}
+        </div>
+      ),
+      className: 'hidden md:table-cell',
+    },
+    {
+      key: 'amount',
+      header: 'Valor Total',
+      sortable: true,
+      sortValue: (row) => row.amount,
+      render: (row) => <span className="text-sm font-semibold">{formatCurrency(row.amount)}</span>,
+    },
+    {
+      key: 'splitAmount',
+      header: 'Rateio/Sócio',
+      className: 'hidden lg:table-cell',
+      render: (row) =>
+        row.splitAmount ? (
+          <div>
+            <span className="text-sm font-medium">{formatCurrency(row.splitAmount)}</span>
+            <span className="block text-[10px] text-muted-foreground">÷ {row.splitCount} sócios</span>
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        ),
+    },
+    {
+      key: 'dueDate',
+      header: 'Vencimento',
+      sortable: true,
+      className: 'hidden md:table-cell',
+      render: (row) =>
+        row.dueDate ? (
+          <span className="text-sm text-muted-foreground">{formatDate(row.dueDate)}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (row) => (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[row.status]}`}>
+          {statusLabels[row.status]}
+        </span>
+      ),
+    },
+  ], []);
+
+  function handleAddExpense(e: React.FormEvent) {
+    e.preventDefault();
+    setShowAddModal(false);
+    toast.success('Despesa registrada com sucesso!');
+  }
 
   return (
     <div className="space-y-6">
@@ -216,103 +301,15 @@ export default function DespesasPage() {
       </div>
 
       {/* Table */}
-      {filtered.length > 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                      Descrição
-                    </th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                      Categoria
-                    </th>
-                    <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                      Valor Total
-                    </th>
-                    <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                      Rateio/Sócio
-                    </th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                      Vencimento
-                    </th>
-                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filtered.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-muted/50 transition-colors cursor-pointer">
-                      <td className="px-6 py-3.5">
-                        <p className="text-sm font-medium text-foreground">{expense.description}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Criado em {formatDate(expense.createdAt)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            categoryColors[expense.category]
-                          }`}
-                        >
-                          {categoryLabels[expense.category]}
-                        </span>
-                        {expense.individualMode && (
-                          <span className="block text-[10px] text-muted-foreground mt-0.5">
-                            {expense.individualMode === 'exclusivo' ? 'Exclusivo' : 'Rateado'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <span className="text-sm font-semibold">{formatCurrency(expense.amount)}</span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        {expense.splitAmount ? (
-                          <div>
-                            <span className="text-sm font-medium">{formatCurrency(expense.splitAmount)}</span>
-                            <span className="block text-[10px] text-muted-foreground">
-                              ÷ {expense.splitCount} sócios
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {expense.dueDate ? (
-                          <span className="text-sm text-muted-foreground">{formatDate(expense.dueDate)}</span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            statusColors[expense.status]
-                          }`}
-                        >
-                          {statusLabels[expense.status]}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <EmptyState
-          icon={Receipt}
-          title="Nenhuma despesa encontrada"
-          description="Não encontramos despesas com os filtros aplicados."
-          actionLabel="Nova Despesa"
-          onAction={() => setShowAddModal(true)}
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={filtered as (Expense & Record<string, unknown>)[]}
+        keyExtractor={(row) => row.id}
+        pageSize={10}
+        emptyTitle="Nenhuma despesa encontrada"
+        emptyDescription="Não encontramos despesas com os filtros aplicados."
+        emptyIcon={Receipt}
+      />
 
       {/* Add Modal */}
       <Modal
@@ -321,7 +318,7 @@ export default function DespesasPage() {
         title="Nova Despesa"
         description="Registre uma nova despesa para a embarcação"
       >
-        <form className="space-y-4 mt-4">
+        <form className="space-y-4 mt-4" onSubmit={handleAddExpense}>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Embarcação</label>
             <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
