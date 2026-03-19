@@ -8,7 +8,7 @@ import { Footer } from './Footer';
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-950 font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#0f172a] font-sans selection:bg-blue-500/30 antialiased">
       <Navbar />
       <main>
         <HeroSection />
