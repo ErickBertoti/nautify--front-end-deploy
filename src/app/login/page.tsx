@@ -36,7 +36,22 @@ export default function LoginPage() {
         return;
       }
 
-      const res = await authService.supabaseLogin(data.session.access_token);
+      // Verifica se há registro pendente (cadastro antes da verificação de email)
+      const pendingReg = localStorage.getItem('nautify_pending_registration');
+      let res;
+      if (pendingReg) {
+        try {
+          const regData = JSON.parse(pendingReg);
+          res = await authService.supabaseRegister(data.session.access_token, regData);
+          localStorage.removeItem('nautify_pending_registration');
+        } catch {
+          // Se falhar (ex: usuário já existe), tenta login normal
+          res = await authService.supabaseLogin(data.session.access_token);
+          localStorage.removeItem('nautify_pending_registration');
+        }
+      } else {
+        res = await authService.supabaseLogin(data.session.access_token);
+      }
       localStorage.setItem('nautify_token', res.data.token);
 
       const redirect = new URLSearchParams(window.location.search).get('redirect');
@@ -73,10 +88,10 @@ export default function LoginPage() {
             {/* Degree marks */}
             {[...Array(36)].map((_, i) => {
               const angle = (i * 10 * Math.PI) / 180;
-              const x1 = 200 + 170 * Math.cos(angle);
-              const y1 = 200 + 170 * Math.sin(angle);
-              const x2 = 200 + 180 * Math.cos(angle);
-              const y2 = 200 + 180 * Math.sin(angle);
+              const x1 = Math.round((200 + 170 * Math.cos(angle)) * 100) / 100;
+              const y1 = Math.round((200 + 170 * Math.sin(angle)) * 100) / 100;
+              const x2 = Math.round((200 + 180 * Math.cos(angle)) * 100) / 100;
+              const y2 = Math.round((200 + 180 * Math.sin(angle)) * 100) / 100;
               return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#b9c6eb" strokeWidth={i % 9 === 0 ? '1' : '0.3'} />;
             })}
           </svg>

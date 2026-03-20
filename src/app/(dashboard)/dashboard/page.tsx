@@ -15,6 +15,7 @@ import {
   Wrench,
   FileText,
   Bell,
+  BellOff,
   CalendarDays,
   ArrowDownUp,
   Plus,
@@ -28,6 +29,7 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { OverviewChart } from '@/components/dashboard/OverviewChart';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useApi } from '@/hooks/useApi';
 import { dashboardService } from '@/services';
 import type { DashboardStats } from '@/types';
@@ -400,7 +402,12 @@ export default function DashboardPage() {
                 Voce tem <span className="font-bold text-foreground">{stats.unreadNotifications}</span> notificacoes nao lidas.
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma notificacao pendente.</p>
+              <EmptyState 
+                size="sm" 
+                icon={BellOff} 
+                title="Nenhuma notificação" 
+                description="Você está em dia com tudo!" 
+              />
             )}
           </CardContent>
         </Card>

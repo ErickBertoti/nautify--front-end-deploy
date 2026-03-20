@@ -7,10 +7,16 @@ import { cn } from '@/lib/utils';
 import { allNavItems } from './Sidebar';
 import Image from 'next/image';
 import { useTheme } from '@/components/ThemeProvider';
+import { useUser } from '@/contexts/UserContext';
+import { useApi } from '@/hooks/useApi';
+import { notificationService } from '@/services';
+import type { Notification } from '@/types';
+import { EmptyState } from '@/components/shared/EmptyState';
 import {
   Menu,
   X,
   Bell,
+  BellOff,
   Search,
   Sun,
   Moon,
@@ -85,9 +91,16 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { user } = useUser();
+  const { data: notifications } = useApi<Notification[]>(() => notificationService.list());
+
+  const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
+  const recentNotifications = notifications?.slice(0, 5) || [];
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'dark' : 'light');
@@ -105,6 +118,7 @@ export function Header() {
   useEffect(() => {
     if (mobileMenuOpen) closeMobileMenu();
     setUserMenuOpen(false);
+    setNotificationsOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -114,10 +128,13 @@ export function Header() {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
       }
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
     }
-    if (userMenuOpen) document.addEventListener('mousedown', handleClick);
+    if (userMenuOpen || notificationsOpen) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [userMenuOpen]);
+  }, [userMenuOpen, notificationsOpen]);
 
   const currentPage = allNavItems.find(
     (item) => pathname === item.href || pathname.startsWith(item.href + '/')
@@ -151,23 +168,91 @@ export function Header() {
           >
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-          <Link
-            href="/notificacoes"
-            className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative cursor-pointer"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-          </Link>
+          <div className="relative" ref={notificationsRef}>
+            <button
+              onClick={() => {
+                setNotificationsOpen((v) => !v);
+                setUserMenuOpen(false);
+              }}
+              className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative cursor-pointer"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
+              )}
+            </button>
+
+            {notificationsOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 rounded-lg border border-border bg-card shadow-xl animate-dropdown-in origin-top-right z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+                  <h3 className="font-semibold text-foreground">Notificações</h3>
+                  {unreadCount > 0 && (
+                    <span className="text-[10px] bg-nautify-100 text-nautify-700 font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      {unreadCount} nova{unreadCount !== 1 && 's'}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="max-h-[300px] overflow-y-auto w-full custom-scrollbar">
+                  {recentNotifications.length > 0 ? (
+                    <div className="flex flex-col">
+                      {recentNotifications.map((notif) => (
+                        <Link
+                          key={notif.id}
+                          href="/notificacoes"
+                          onClick={() => setNotificationsOpen(false)}
+                          className={cn(
+                            "flex flex-col gap-1 px-4 py-3 hover:bg-accent transition-colors cursor-pointer border-b border-border/50 last:border-0",
+                            !notif.isRead ? "bg-nautify-50/10" : ""
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className={cn("text-sm font-medium line-clamp-1 flex-1", !notif.isRead ? "text-foreground" : "text-muted-foreground")}>
+                              {notif.title}
+                            </span>
+                            {!notif.isRead && <span className="w-1.5 h-1.5 rounded-full bg-nautify-500 shrink-0 mt-1.5" />}
+                          </div>
+                          <span className="text-xs text-muted-foreground line-clamp-2">
+                            {notif.message}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState 
+                      size="sm" 
+                      icon={BellOff} 
+                      title="Nenhuma notificação" 
+                      description="Você está em dia com tudo!" 
+                    />
+                  )}
+                </div>
+
+                <div className="border-t border-border p-2 bg-muted/30">
+                  <Link
+                    href="/notificacoes"
+                    onClick={() => setNotificationsOpen(false)}
+                    className="flex text-xs text-center w-full justify-center py-2 text-nautify-600 hover:text-nautify-700 hover:bg-nautify-50 dark:hover:bg-nautify-950/30 rounded-md transition-colors font-semibold uppercase tracking-wider"
+                  >
+                    Ver todas
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="w-px h-6 bg-border mx-1" />
           <div className="relative" ref={userMenuRef}>
             <button
-              onClick={() => setUserMenuOpen((v) => !v)}
+              onClick={() => {
+                setUserMenuOpen((v) => !v);
+                setNotificationsOpen(false);
+              }}
               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors cursor-pointer"
             >
               <div className="w-8 h-8 rounded-full bg-nautify-100 flex items-center justify-center">
                 <User className="h-4 w-4 text-nautify-700" />
               </div>
-              <span className="hidden sm:block text-sm font-medium">Gabriel</span>
+              <span className="hidden sm:block text-sm font-medium">{user?.name?.split(' ')[0] || '...'}</span>
               <ChevronDown className={cn('hidden sm:block h-3.5 w-3.5 text-muted-foreground transition-transform duration-200', userMenuOpen && 'rotate-180')} />
             </button>
 
@@ -175,8 +260,8 @@ export function Header() {
               <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-border bg-card shadow-xl animate-dropdown-in origin-top-right z-50">
                 {/* User info */}
                 <div className="px-4 py-3 border-b border-border">
-                  <p className="text-sm font-semibold text-foreground">Gabriel</p>
-                  <p className="text-xs text-muted-foreground truncate">gabriel@email.com</p>
+                  <p className="text-sm font-semibold text-foreground">{user?.name || '...'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email || '...'}</p>
                 </div>
                 {/* Menu items */}
                 <div className="py-1.5">

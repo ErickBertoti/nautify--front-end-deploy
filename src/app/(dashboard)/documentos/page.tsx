@@ -26,6 +26,7 @@ import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { documentService } from '@/services';
@@ -231,11 +232,11 @@ export default function DocumentosPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <FolderOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="font-medium">Nenhum documento encontrado</p>
-          <p className="text-sm">Tente ajustar os filtros ou envie um novo documento</p>
-        </div>
+        <EmptyState 
+          icon={FolderOpen} 
+          title="Nenhum documento encontrado" 
+          description="Tente ajustar os filtros ou envie um novo documento" 
+        />
       )}
 
       {/* Upload Modal */}

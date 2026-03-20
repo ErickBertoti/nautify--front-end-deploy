@@ -215,6 +215,9 @@ export default function RegisterPage() {
       const { data, error: sbError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
 
       if (sbError) {
@@ -226,6 +229,23 @@ export default function RegisterPage() {
       }
 
       if (!data.session) {
+        // Salva dados do formulário para completar registro após verificação de email
+        localStorage.setItem('nautify_pending_registration', JSON.stringify({
+          name: form.name,
+          phone: form.phone.replace(/\D/g, ''),
+          documentType: form.documentType,
+          document: form.document.replace(/\D/g, ''),
+          birthDate: form.birthDate || undefined,
+          address: {
+            cep: form.cep.replace(/\D/g, ''),
+            street: form.street,
+            number: form.number,
+            complement: form.complement,
+            neighborhood: form.neighborhood,
+            city: form.city,
+            state: form.state,
+          },
+        }));
         setSubmitError('Verifique seu e-mail para confirmar o cadastro e depois faça login.');
         setIsLoading(false);
         return;

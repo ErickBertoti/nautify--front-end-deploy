@@ -26,6 +26,7 @@ import { formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { notificationService } from '@/services';
 import type { Notification } from '@/types';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 const typeConfig: Record<string, { label: string; icon: typeof Bell; color: string; bgColor: string }> = {
   financeiro: { label: 'Financeiro', icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
@@ -194,11 +195,11 @@ export default function NotificacoesPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <BellOff className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="font-medium">Nenhuma notificação</p>
-          <p className="text-sm">Você está em dia com tudo!</p>
-        </div>
+        <EmptyState 
+          icon={BellOff} 
+          title="Nenhuma notificação" 
+          description="Você está em dia com tudo!" 
+        />
       )}
     </div>
   );
