@@ -19,6 +19,7 @@ import {
   ArrowDownUp,
   Plus,
   Clock,
+  Loader2,
 } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -27,45 +28,17 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { OverviewChart } from '@/components/dashboard/OverviewChart';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { useApi } from '@/hooks/useApi';
+import { dashboardService } from '@/services';
+import type { DashboardStats } from '@/types';
 
-// Mock data expandido
-const mockStats = {
-  totalBoats: 2,
-  totalExpensesMonth: 8450.0,
-  totalRevenueMonth: 12600.0,
-  totalTripsMonth: 7,
-  pendingMaintenances: 2,
-  expiringDocuments: 1,
-  unreadNotifications: 3,
-  cashFlowBalance: 4150.0,
+const eventTypeColors: Record<string, string> = {
+  manutencao: 'bg-amber-500',
+  reserva: 'bg-nautify-500',
+  lembrete: 'bg-red-500',
+  evento: 'bg-emerald-500',
+  outro: 'bg-zinc-500',
 };
-
-const mockRecentExpenses = [
-  { id: '1', description: 'Marina Mensalidade - Mar/2026', amount: 3200, category: 'fixa', status: 'pendente', dueDate: '2026-03-05' },
-  { id: '2', description: 'Manutenção Motor', amount: 1850, category: 'variavel', status: 'paga', dueDate: '2026-02-15' },
-  { id: '3', description: 'Seguro Anual', amount: 4500, category: 'fixa', status: 'pendente', dueDate: '2026-03-01' },
-];
-
-const mockUpcomingEvents = [
-  { id: '1', title: 'Manutenção Preventiva - Mar Azul', type: 'manutencao', date: '2026-03-08', color: 'bg-amber-500' },
-  { id: '2', title: 'Reserva - Veleiro Sol', type: 'reserva', date: '2026-03-10', color: 'bg-nautify-500' },
-  { id: '3', title: 'Vencimento Seguro', type: 'lembrete', date: '2026-03-15', color: 'bg-red-500' },
-  { id: '4', title: 'Saída programada - Mar Azul', type: 'reserva', date: '2026-03-18', color: 'bg-emerald-500' },
-];
-
-const mockNotifications = [
-  { id: '1', title: 'Manutenção agendada', message: 'Revisão do motor da Mar Azul em 5 dias', type: 'manutencao', priority: 'alta', createdAt: '2026-03-01' },
-  { id: '2', title: 'Documento vencendo', message: 'Seguro da Veleiro Sol vence em 15 dias', type: 'documento', priority: 'media', createdAt: '2026-03-01' },
-  { id: '3', title: 'Pagamento pendente', message: 'Mensalidade da marina vence em 5 dias', type: 'financeiro', priority: 'alta', createdAt: '2026-03-01' },
-];
-
-const mockMonthlyChart = [
-  { month: 'Out', revenue: 10200, expense: 7800 },
-  { month: 'Nov', revenue: 11500, expense: 9200 },
-  { month: 'Dez', revenue: 13000, expense: 10500 },
-  { month: 'Jan', revenue: 11800, expense: 8900 },
-  { month: 'Fev', revenue: 12600, expense: 8450 },
-];
 
 const categoryColors: Record<string, string> = {
   fixa: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
@@ -91,15 +64,11 @@ const statusLabels: Record<string, string> = {
   vencida: 'Vencida',
 };
 
-const notifTypeIcons: Record<string, { icon: typeof Bell; color: string }> = {
-  manutencao: { icon: Wrench, color: 'text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-400' },
-  documento: { icon: FileText, color: 'text-blue-600 bg-blue-100 dark:bg-blue-500/20 dark:text-blue-400' },
-  financeiro: { icon: DollarSign, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400' },
-  sistema: { icon: Bell, color: 'text-zinc-600 bg-zinc-100 dark:bg-zinc-500/20 dark:text-zinc-400' },
-  agenda: { icon: CalendarDays, color: 'text-nautify-600 bg-nautify-100 dark:bg-nautify-500/20 dark:text-nautify-400' },
-};
-
 export default function DashboardPage() {
+  const { data: stats, loading, error } = useApi<DashboardStats>(
+    () => dashboardService.getStats(),
+  );
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -114,6 +83,29 @@ export default function DashboardPage() {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar dashboard'}</p>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  const recentExpenses = stats.upcomingExpenses || [];
+  const upcomingEvents = stats.upcomingEvents || [];
+  const monthlyChart = stats.monthlyRevenueVsExpense || [];
+  const expensesByCategory = stats.monthlyExpensesByCategory || { fixa: 0, variavel: 0, individual: 0 };
+  const totalExpenses = expensesByCategory.fixa + expensesByCategory.variavel + expensesByCategory.individual;
 
   return (
     <motion.div
@@ -148,7 +140,7 @@ export default function DashboardPage() {
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Receitas do Mês"
-          value={formatCurrency(mockStats.totalRevenueMonth)}
+          value={formatCurrency(stats.totalRevenueMonth)}
           subtitle="total recebido"
           icon={TrendingUp}
           trend={{ value: 9, isPositive: true }}
@@ -157,7 +149,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Despesas do Mês"
-          value={formatCurrency(mockStats.totalExpensesMonth)}
+          value={formatCurrency(stats.totalExpensesMonth)}
           subtitle="total acumulado"
           icon={TrendingDown}
           trend={{ value: 12, isPositive: false }}
@@ -166,7 +158,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Saldo do Mês"
-          value={formatCurrency(mockStats.cashFlowBalance)}
+          value={formatCurrency(stats.cashFlowBalance)}
           subtitle="receitas - despesas"
           icon={ArrowDownUp}
           iconBgColor="bg-blue-100 dark:bg-blue-500/20"
@@ -174,7 +166,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Embarcações"
-          value={String(mockStats.totalBoats)}
+          value={String(stats.totalBoats)}
           subtitle="ativas no momento"
           icon={Ship}
           iconBgColor="bg-nautify-100 dark:bg-nautify-500/20"
@@ -191,7 +183,7 @@ export default function DashboardPage() {
                 <Navigation className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{mockStats.totalTripsMonth}</p>
+                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{stats.totalTripsMonth}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground font-medium">Saídas no Mês</p>
               </div>
             </CardContent>
@@ -204,7 +196,7 @@ export default function DashboardPage() {
                 <Wrench className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{mockStats.pendingMaintenances}</p>
+                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{stats.pendingMaintenances}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground font-medium">Manutenções</p>
               </div>
             </CardContent>
@@ -217,7 +209,7 @@ export default function DashboardPage() {
                 <FileText className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{mockStats.expiringDocuments}</p>
+                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{stats.expiringDocuments}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground font-medium">Docs Vencendo</p>
               </div>
             </CardContent>
@@ -230,7 +222,7 @@ export default function DashboardPage() {
                 <Bell className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{mockStats.unreadNotifications}</p>
+                <p className="text-2xl sm:text-3xl font-bold tracking-tight">{stats.unreadNotifications}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground font-medium">Notificações</p>
               </div>
             </CardContent>
@@ -241,7 +233,7 @@ export default function DashboardPage() {
       {/* Main Content Grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Receita vs Despesa Chart */}
-        <OverviewChart data={mockMonthlyChart} />
+        <OverviewChart data={monthlyChart} />
 
         {/* Rateio do Mês */}
         <Card className="flex flex-col">
@@ -253,22 +245,19 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-center gap-8 p-6">
             <div className="text-center">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Sua parte este mês</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Total de despesas do mês</p>
               <div className="inline-flex items-baseline gap-1">
                 <p className="text-4xl font-bold text-foreground tracking-tight">
-                  {formatCurrency(2816.67)}
+                  {formatCurrency(stats.totalExpensesMonth)}
                 </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-2 bg-muted/50 inline-block px-2 py-1 rounded-md">
-                Total de {formatCurrency(8450)} ÷ 3 sócios
-              </p>
             </div>
 
             <div className="space-y-4 w-full">
               {[
-                { label: 'Fixas', color: 'bg-blue-500', bgToken: 'bg-blue-100 dark:bg-blue-500/20', numColor: 'text-blue-700 dark:text-blue-400', value: 5200, pct: 61 },
-                { label: 'Variáveis', color: 'bg-purple-500', bgToken: 'bg-purple-100 dark:bg-purple-500/20', numColor: 'text-purple-700 dark:text-purple-400', value: 2450, pct: 29 },
-                { label: 'Individuais', color: 'bg-amber-500', bgToken: 'bg-amber-100 dark:bg-amber-500/20', numColor: 'text-amber-700 dark:text-amber-400', value: 800, pct: 10 },
+                { label: 'Fixas', color: 'bg-blue-500', bgToken: 'bg-blue-100 dark:bg-blue-500/20', numColor: 'text-blue-700 dark:text-blue-400', value: expensesByCategory.fixa, pct: totalExpenses > 0 ? Math.round((expensesByCategory.fixa / totalExpenses) * 100) : 0 },
+                { label: 'Variáveis', color: 'bg-purple-500', bgToken: 'bg-purple-100 dark:bg-purple-500/20', numColor: 'text-purple-700 dark:text-purple-400', value: expensesByCategory.variavel, pct: totalExpenses > 0 ? Math.round((expensesByCategory.variavel / totalExpenses) * 100) : 0 },
+                { label: 'Individuais', color: 'bg-amber-500', bgToken: 'bg-amber-100 dark:bg-amber-500/20', numColor: 'text-amber-700 dark:text-amber-400', value: expensesByCategory.individual, pct: totalExpenses > 0 ? Math.round((expensesByCategory.individual / totalExpenses) * 100) : 0 },
               ].map((item) => (
                 <div key={item.label} className="group">
                   <div className="flex items-center justify-between mb-1.5">
@@ -312,7 +301,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0 flex-1">
             <div className="divide-y divide-border/50">
-              {mockRecentExpenses.map((expense, i) => (
+              {recentExpenses.map((expense, i) => (
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -367,7 +356,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0 flex-1">
             <div className="divide-y divide-border/50">
-              {mockUpcomingEvents.map((event, i) => (
+              {upcomingEvents.map((event, i) => (
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -375,15 +364,15 @@ export default function DashboardPage() {
                   key={event.id}
                   className="flex items-center gap-4 px-6 py-4 hover:bg-muted/30 transition-colors cursor-pointer group"
                 >
-                  <div className={`w-1.5 h-12 rounded-full ${event.color} opacity-80 group-hover:opacity-100 transition-opacity`} />
+                  <div className={`w-1.5 h-12 rounded-full ${eventTypeColors[event.type] || eventTypeColors.outro} opacity-80 group-hover:opacity-100 transition-opacity`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{event.title}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">{formatDate(event.date)}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{formatDate(event.startDate)}</span>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="font-semibold">{event.type === 'manutencao' ? 'Manutenção' : event.type === 'reserva' ? 'Reserva' : 'Lembrete'}</Badge>
+                  <Badge variant="secondary" className="font-semibold">{event.type === 'manutencao' ? 'Manutenção' : event.type === 'reserva' ? 'Reserva' : event.type === 'lembrete' ? 'Lembrete' : 'Evento'}</Badge>
                 </motion.div>
               ))}
             </div>
@@ -405,36 +394,14 @@ export default function DashboardPage() {
               </Button>
             </Link>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/50">
-              {mockNotifications.map((notif, i) => {
-                const typeConfig = notifTypeIcons[notif.type] || notifTypeIcons.sistema;
-                const Icon = typeConfig.icon;
-                return (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * i + 0.4 }}
-                    key={notif.id}
-                    className="flex flex-col gap-3 p-5 hover:bg-muted/20 transition-colors cursor-pointer group"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${typeConfig.color} group-hover:scale-110 transition-transform`}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <span className="text-xs font-medium text-muted-foreground shrink-0 bg-muted px-2 py-1 rounded-md">{formatDate(notif.createdAt)}</span>
-                    </div>
-                    <div className="flex-1 mt-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">{notif.title}</p>
-                        {notif.priority === 'alta' && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">Urgente</Badge>}
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{notif.message}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+          <CardContent className="p-6">
+            {stats.unreadNotifications > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Voce tem <span className="font-bold text-foreground">{stats.unreadNotifications}</span> notificacoes nao lidas.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma notificacao pendente.</p>
+            )}
           </CardContent>
         </Card>
       </motion.div>

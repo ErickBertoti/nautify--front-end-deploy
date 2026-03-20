@@ -10,6 +10,7 @@ import {
   Clock,
   User,
   Anchor,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -18,66 +19,9 @@ import { Modal } from '@/components/ui/Modal';
 import { Input, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate, formatDateTime } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { tripService } from '@/services';
 import type { Trip } from '@/types';
-
-const mockTrips: Trip[] = [
-  {
-    id: '1',
-    boatId: '1',
-    boatName: 'Mar Azul',
-    type: 'uso',
-    responsibleUser: { id: '1', name: 'Gabriel Silva', email: '', createdAt: '' },
-    responsibleUserId: '1',
-    sailor: { id: '3', name: 'Carlos Marinheiro', email: '', createdAt: '' },
-    sailorId: '3',
-    startDate: '2026-02-27T14:00:00',
-    status: 'em_andamento',
-    observations: 'Passeio até Ilhabela',
-    createdAt: '2026-02-27',
-  },
-  {
-    id: '2',
-    boatId: '1',
-    boatName: 'Mar Azul',
-    type: 'uso',
-    responsibleUser: { id: '2', name: 'Ricardo Mendes', email: '', createdAt: '' },
-    responsibleUserId: '2',
-    sailor: { id: '3', name: 'Carlos Marinheiro', email: '', createdAt: '' },
-    sailorId: '3',
-    startDate: '2026-02-25T10:00:00',
-    endDate: '2026-02-25T18:30:00',
-    status: 'com_ocorrencia',
-    observations: 'Saída recreativa - Identificado arranhão no casco',
-    createdAt: '2026-02-25',
-  },
-  {
-    id: '3',
-    boatId: '1',
-    boatName: 'Mar Azul',
-    type: 'teste',
-    sailor: { id: '3', name: 'Carlos Marinheiro', email: '', createdAt: '' },
-    sailorId: '3',
-    startDate: '2026-02-23T08:00:00',
-    endDate: '2026-02-23T12:00:00',
-    status: 'finalizada',
-    observations: 'Teste motor após manutenção - OK',
-    createdAt: '2026-02-23',
-  },
-  {
-    id: '4',
-    boatId: '2',
-    boatName: 'Veleiro Sol',
-    type: 'uso',
-    responsibleUser: { id: '5', name: 'Ana Paula', email: '', createdAt: '' },
-    responsibleUserId: '5',
-    sailor: { id: '6', name: 'Pedro Navegador', email: '', createdAt: '' },
-    sailorId: '6',
-    startDate: '2026-02-22T09:00:00',
-    endDate: '2026-02-22T17:00:00',
-    status: 'finalizada',
-    createdAt: '2026-02-22',
-  },
-];
 
 const statusColors: Record<string, string> = {
   em_andamento: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -102,13 +46,50 @@ export default function SaidasPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
 
-  const filtered = mockTrips.filter((t) => {
+  const { data: trips, loading, error, refetch } = useApi<Trip[]>(
+    () => tripService.list(),
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !trips) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar saídas'}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  const filtered = trips.filter((t) => {
     const matchesSearch =
       t.boatName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.observations?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'todos' || t.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
+
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await tripService.create({
+      boatId: formData.get('boatId') as string,
+      type: formData.get('type') as Trip['type'],
+      startDate: formData.get('startDate') as string,
+      responsibleUserId: (formData.get('responsibleUserId') as string) || undefined,
+      sailorId: formData.get('sailorId') as string,
+      observations: (formData.get('observations') as string) || undefined,
+    });
+    setShowAddModal(false);
+    refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -132,7 +113,7 @@ export default function SaidasPage() {
             <div>
               <p className="text-xs text-muted-foreground">Em andamento</p>
               <p className="text-lg font-bold">
-                {mockTrips.filter((t) => t.status === 'em_andamento').length}
+                {trips.filter((t) => t.status === 'em_andamento').length}
               </p>
             </div>
           </CardContent>
@@ -143,7 +124,7 @@ export default function SaidasPage() {
             <div>
               <p className="text-xs text-muted-foreground">Finalizadas</p>
               <p className="text-lg font-bold">
-                {mockTrips.filter((t) => t.status === 'finalizada').length}
+                {trips.filter((t) => t.status === 'finalizada').length}
               </p>
             </div>
           </CardContent>
@@ -154,7 +135,7 @@ export default function SaidasPage() {
             <div>
               <p className="text-xs text-muted-foreground">Com ocorrência</p>
               <p className="text-lg font-bold">
-                {mockTrips.filter((t) => t.status === 'com_ocorrencia').length}
+                {trips.filter((t) => t.status === 'com_ocorrencia').length}
               </p>
             </div>
           </CardContent>
@@ -282,10 +263,10 @@ export default function SaidasPage() {
         title="Nova Saída"
         description="Registre uma nova saída de embarcação"
       >
-        <form className="space-y-4 mt-4">
+        <form className="space-y-4 mt-4" onSubmit={handleCreate}>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Embarcação</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="boatId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="1">Mar Azul - Phantom 303</option>
               <option value="2">Veleiro Sol - Beneteau 34</option>
             </select>
@@ -293,16 +274,16 @@ export default function SaidasPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">Tipo</label>
-              <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <select name="type" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="uso">Uso (Sócio)</option>
                 <option value="teste">Teste (Operacional)</option>
               </select>
             </div>
-            <Input label="Data/Hora Saída" type="datetime-local" required />
+            <Input label="Data/Hora Saída" name="startDate" type="datetime-local" required />
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Sócio Responsável</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="responsibleUserId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Selecione (obrigatório se tipo Uso)</option>
               <option value="1">Gabriel Silva</option>
               <option value="2">Ricardo Mendes</option>
@@ -310,11 +291,11 @@ export default function SaidasPage() {
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Marinheiro</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="sailorId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="3">Carlos Marinheiro</option>
             </select>
           </div>
-          <Textarea label="Observações" placeholder="Destino, propósito, etc. (opcional)" />
+          <Textarea label="Observações" name="observations" placeholder="Destino, propósito, etc. (opcional)" />
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>
               Cancelar

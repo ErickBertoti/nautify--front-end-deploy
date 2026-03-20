@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Mail, Lock, Eye, EyeOff, Anchor, Navigation, Shield, Clock, ArrowRight } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
+import { authService } from '@/services';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,15 +14,37 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: Integrar com API Go
-    setTimeout(() => {
-      localStorage.setItem('nautify_token', 'mock-token');
-      router.push('/dashboard');
-    }, 1000);
+    setError('');
+
+    try {
+      const supabase = createClient();
+      const { data, error: sbError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+
+      if (sbError || !data.session) {
+        setError(sbError?.message === 'Invalid login credentials'
+          ? 'E-mail ou senha incorretos'
+          : sbError?.message || 'Erro ao fazer login');
+        setIsLoading(false);
+        return;
+      }
+
+      const res = await authService.supabaseLogin(data.session.access_token);
+      localStorage.setItem('nautify_token', res.data.token);
+
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      router.push(redirect || '/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -325,6 +349,11 @@ export default function LoginPage() {
                   Esqueci minha senha
                 </Link>
               </div>
+
+              {/* Error message */}
+              {error && (
+                <p className="text-sm text-red-400 text-center">{error}</p>
+              )}
 
               {/* Submit button - Gold gradient */}
               <button

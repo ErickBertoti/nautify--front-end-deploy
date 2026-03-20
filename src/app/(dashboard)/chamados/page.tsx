@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   AlertTriangle,
   Plus,
@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Clock,
   CreditCard,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -20,52 +21,10 @@ import { Modal } from '@/components/ui/Modal';
 import { Input, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { incidentService } from '@/services';
+import { uploadFile } from '@/lib/storage';
 import type { Incident } from '@/types';
-
-const mockIncidents: Incident[] = [
-  {
-    id: '1',
-    boatId: '1',
-    boatName: 'Mar Azul',
-    tripId: '2',
-    description: 'Arranhão na lateral direita do casco durante atracação',
-    estimatedCost: 800,
-    photos: ['/mock/damage1.jpg', '/mock/damage2.jpg'],
-    status: 'pendente',
-    createdBy: '3',
-    createdByUser: { id: '3', name: 'Carlos Marinheiro', email: '', createdAt: '' },
-    createdAt: '2026-02-25',
-  },
-  {
-    id: '2',
-    boatId: '1',
-    boatName: 'Mar Azul',
-    tripId: '5',
-    description: 'Banco do cockpit rasgado',
-    estimatedCost: 1200,
-    photos: [],
-    status: 'aprovado',
-    expenseMode: 'rateado',
-    createdBy: '3',
-    createdByUser: { id: '3', name: 'Carlos Marinheiro', email: '', createdAt: '' },
-    createdAt: '2026-02-10',
-  },
-  {
-    id: '3',
-    boatId: '2',
-    boatName: 'Veleiro Sol',
-    tripId: '8',
-    description: 'Vela rasgada durante temporal',
-    estimatedCost: 3500,
-    photos: [],
-    status: 'pago',
-    expenseMode: 'rateado',
-    generatedExpenseId: '10',
-    createdBy: '6',
-    createdByUser: { id: '6', name: 'Pedro Navegador', email: '', createdAt: '' },
-    createdAt: '2026-01-18',
-  },
-];
 
 const statusConfig: Record<string, { color: string; icon: React.ElementType; label: string; dotColor: string }> = {
   pendente: { color: 'bg-amber-50 text-amber-700', icon: Clock, label: 'Pendente', dotColor: 'bg-amber-500' },
@@ -77,8 +36,18 @@ export default function ChamadosPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = mockIncidents.filter((i) => {
+  const { data: paginatedData, loading, error, refetch } = useApi(
+    () => incidentService.list(),
+    [],
+  );
+
+  const incidents: Incident[] = paginatedData?.data ?? [];
+
+  const filtered = incidents.filter((i) => {
     const matchesSearch =
       i.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       i.boatName?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -86,10 +55,69 @@ export default function ChamadosPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const pendingCount = mockIncidents.filter((i) => i.status === 'pendente').length;
-  const totalEstimated = mockIncidents
+  const pendingCount = incidents.filter((i) => i.status === 'pendente').length;
+  const totalEstimated = incidents
     .filter((i) => i.status !== 'pago')
     .reduce((sum, i) => sum + i.estimatedCost, 0);
+
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setUploading(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+
+      // Upload photos to Supabase Storage
+      let photoUrls: string[] = [];
+      if (photos.length > 0) {
+        const results = await Promise.all(
+          photos.map(photo => uploadFile('incidents', photo))
+        );
+        photoUrls = results.map(r => r.url);
+      }
+
+      await incidentService.create({
+        boatId: formData.get('boatId') as string,
+        tripId: formData.get('tripId') as string,
+        description: formData.get('description') as string,
+        estimatedCost: Number(formData.get('estimatedCost')),
+        photos: photoUrls,
+      });
+
+      setPhotos([]);
+      setShowAddModal(false);
+      refetch();
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    await incidentService.approve(id, { expenseMode: 'rateado' });
+    refetch();
+  };
+
+  const handleMarkAsPaid = async (id: string) => {
+    await incidentService.markAsPaid(id);
+    refetch();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -220,8 +248,15 @@ export default function ChamadosPage() {
                       <p className="text-xs text-muted-foreground">custo estimado</p>
                       {incident.status === 'pendente' && (
                         <div className="mt-2 space-y-1">
-                          <Button size="sm" className="w-full">
+                          <Button size="sm" className="w-full" onClick={() => handleApprove(incident.id)}>
                             Aprovar
+                          </Button>
+                        </div>
+                      )}
+                      {incident.status === 'aprovado' && (
+                        <div className="mt-2 space-y-1">
+                          <Button size="sm" variant="outline" className="w-full" onClick={() => handleMarkAsPaid(incident.id)}>
+                            Marcar Pago
                           </Button>
                         </div>
                       )}
@@ -243,31 +278,33 @@ export default function ChamadosPage() {
       {/* Add Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => { setShowAddModal(false); setPhotos([]); }}
         title="Novo Chamado"
         description="Registre um dano ou ocorrência identificada"
       >
-        <form className="space-y-4 mt-4">
+        <form className="space-y-4 mt-4" onSubmit={handleCreate}>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Embarcação</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="boatId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="1">Mar Azul - Phantom 303</option>
               <option value="2">Veleiro Sol - Beneteau 34</option>
             </select>
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Saída Relacionada</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="tripId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="2">25/02/2026 - Ricardo Mendes</option>
               <option value="1">27/02/2026 - Gabriel Silva (em andamento)</option>
             </select>
           </div>
           <Textarea
+            name="description"
             label="Descrição do dano/ocorrência"
             placeholder="Descreva o que aconteceu em detalhes..."
             required
           />
           <Input
+            name="estimatedCost"
             label="Custo Estimado (R$)"
             type="number"
             placeholder="0,00"
@@ -276,19 +313,65 @@ export default function ChamadosPage() {
           />
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Fotos</label>
-            <div className="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
+            <div
+              className="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const files = Array.from(e.dataTransfer.files).filter(f =>
+                  f.type.startsWith('image/')
+                );
+                setPhotos(prev => [...prev, ...files]);
+              }}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  setPhotos(prev => [...prev, ...files]);
+                  e.target.value = '';
+                }}
+              />
               <Camera className="h-8 w-8 text-muted-foreground mx-auto" />
               <p className="text-sm text-muted-foreground mt-2">
                 Clique ou arraste fotos aqui
               </p>
               <p className="text-xs text-muted-foreground mt-1">PNG, JPG até 5MB</p>
             </div>
+            {photos.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {photos.map((file, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={file.name}
+                      className="h-16 w-16 object-cover rounded-lg border border-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPhotos(prev => prev.filter((_, i) => i !== idx))}
+                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>
+            <Button variant="outline" type="button" onClick={() => { setShowAddModal(false); setPhotos([]); }}>
               Cancelar
             </Button>
-            <Button type="submit">Abrir Chamado</Button>
+            <Button type="submit" disabled={uploading}>
+              {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {uploading ? 'Enviando...' : 'Abrir Chamado'}
+            </Button>
           </div>
         </form>
       </Modal>

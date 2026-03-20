@@ -9,44 +9,79 @@ import {
   ArrowDownRight,
   Calendar,
   Filter,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockHistory = [
-  { id: '1', type: 'saida', description: 'Marina Mensalidade - Jan/2026', amount: 3200, date: '2026-01-05', boatName: 'Mar Azul', category: 'fixa' },
-  { id: '2', type: 'entrada', description: 'Mensalidade Gabriel - Jan/2026', amount: 4200, date: '2026-01-01', boatName: 'Mar Azul', category: 'mensalidade' },
-  { id: '3', type: 'saida', description: 'Combustível Jan', amount: 890, date: '2026-01-12', boatName: 'Mar Azul', category: 'variavel' },
-  { id: '4', type: 'entrada', description: 'Aluguel fim de semana', amount: 2500, date: '2026-01-15', boatName: 'Veleiro Sol', category: 'aluguel' },
-  { id: '5', type: 'saida', description: 'Seguro Trimestral', amount: 1500, date: '2026-01-20', boatName: 'Mar Azul', category: 'fixa' },
-  { id: '6', type: 'entrada', description: 'Mensalidade Pedro - Jan/2026', amount: 4200, date: '2026-01-01', boatName: 'Mar Azul', category: 'mensalidade' },
-  { id: '7', type: 'saida', description: 'Reparo elétrico', amount: 750, date: '2026-01-25', boatName: 'Veleiro Sol', category: 'variavel' },
-  { id: '8', type: 'saida', description: 'Marina Mensalidade - Fev/2026', amount: 3200, date: '2026-02-05', boatName: 'Mar Azul', category: 'fixa' },
-  { id: '9', type: 'entrada', description: 'Mensalidade Gabriel - Fev/2026', amount: 4200, date: '2026-02-01', boatName: 'Mar Azul', category: 'mensalidade' },
-  { id: '10', type: 'saida', description: 'Manutenção Motor', amount: 1850, date: '2026-02-15', boatName: 'Mar Azul', category: 'variavel' },
-  { id: '11', type: 'entrada', description: 'Mensalidade Pedro - Fev/2026', amount: 4200, date: '2026-02-01', boatName: 'Mar Azul', category: 'mensalidade' },
-  { id: '12', type: 'saida', description: 'Limpeza do casco', amount: 650, date: '2026-02-20', boatName: 'Mar Azul', category: 'variavel' },
-];
-
-const monthlyTotals = [
-  { month: 'Janeiro 2026', entradas: 10900, saidas: 6340, saldo: 4560 },
-  { month: 'Fevereiro 2026', entradas: 12600, saidas: 8450, saldo: 4150 },
-  { month: 'Março 2026', entradas: 17900, saidas: 12880, saldo: 5020 },
-];
+import { useApi } from '@/hooks/useApi';
+import { cashFlowService } from '@/services';
+import type { CashFlowEntry } from '@/types';
 
 export default function HistoricoPage() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterBoat, setFilterBoat] = useState('');
 
-  const filtered = mockHistory.filter((entry) => {
+  const { data: entries, loading, error, refetch } = useApi<CashFlowEntry[]>(
+    () => cashFlowService.listEntries(),
+    [],
+  );
+
+  const entryList = entries ?? [];
+
+  // Compute monthly totals from the entry data
+  const monthlyTotalsMap = new Map<string, { entradas: number; saidas: number }>();
+  entryList.forEach((entry) => {
+    const d = new Date(entry.date);
+    const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const formatted = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+    if (!monthlyTotalsMap.has(formatted)) {
+      monthlyTotalsMap.set(formatted, { entradas: 0, saidas: 0 });
+    }
+    const totals = monthlyTotalsMap.get(formatted)!;
+    if (entry.type === 'entrada') {
+      totals.entradas += entry.amount;
+    } else {
+      totals.saidas += entry.amount;
+    }
+  });
+  const monthlyTotals = Array.from(monthlyTotalsMap.entries()).map(([month, t]) => ({
+    month,
+    entradas: t.entradas,
+    saidas: t.saidas,
+    saldo: t.entradas - t.saidas,
+  }));
+
+  const filtered = entryList.filter((entry) => {
     if (search && !entry.description.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterType && entry.type !== filterType) return false;
     if (filterBoat && entry.boatName !== filterBoat) return false;
     return true;
   });
+
+  // Collect unique boat names for filter
+  const boatNames = Array.from(new Set(entryList.map((e) => e.boatName).filter(Boolean)));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -102,8 +137,9 @@ export default function HistoricoPage() {
             </Select>
             <Select value={filterBoat} onChange={(e) => setFilterBoat(e.target.value)}>
               <option value="">Todas embarcações</option>
-              <option value="Mar Azul">Mar Azul</option>
-              <option value="Veleiro Sol">Veleiro Sol</option>
+              {boatNames.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
             </Select>
           </div>
         </CardContent>
@@ -141,11 +177,6 @@ export default function HistoricoPage() {
                     </td>
                     <td className="px-6 py-3.5 text-sm font-medium">{entry.description}</td>
                     <td className="px-6 py-3.5 text-sm text-muted-foreground">{entry.boatName}</td>
-                    <td className="px-6 py-3.5">
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground capitalize">
-                        {entry.category}
-                      </span>
-                    </td>
                     <td className="px-6 py-3.5 text-right">
                       <span className={`text-sm font-semibold ${entry.type === 'entrada' ? 'text-emerald-600' : 'text-red-600'}`}>
                         {entry.type === 'entrada' ? '+' : '-'}{formatCurrency(entry.amount)}

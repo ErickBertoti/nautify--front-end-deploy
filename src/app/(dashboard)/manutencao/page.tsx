@@ -13,6 +13,7 @@ import {
   DollarSign,
   Package,
   XCircle,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -21,15 +22,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockMaintenances = [
-  { id: '1', boatName: 'Mar Azul', title: 'Revisão do Motor 200h', description: 'Troca de óleo, filtros e verificação geral do motor', type: 'preventiva', status: 'agendada', priority: 'alta', scheduledDate: '2026-03-10', estimatedCost: 2500, parts: [{ name: 'Óleo Motor', qty: 4, cost: 120 }, { name: 'Filtro de óleo', qty: 1, cost: 85 }] },
-  { id: '2', boatName: 'Veleiro Sol', title: 'Revisão Elétrica', description: 'Verificação do sistema elétrico completo', type: 'preventiva', status: 'agendada', priority: 'media', scheduledDate: '2026-03-20', estimatedCost: 800, parts: [] },
-  { id: '3', boatName: 'Mar Azul', title: 'Reparo no Casco', description: 'Arranhão lateral precisa de reparo e pintura', type: 'corretiva', status: 'em_andamento', priority: 'alta', scheduledDate: '2026-03-05', estimatedCost: 1200, parts: [{ name: 'Resina Epóxi', qty: 2, cost: 180 }, { name: 'Tinta náutica', qty: 1, cost: 350 }] },
-  { id: '4', boatName: 'Mar Azul', title: 'Troca da Hélice', description: 'Hélice com desgaste excessivo', type: 'corretiva', status: 'concluida', priority: 'urgente', scheduledDate: '2026-02-25', estimatedCost: 3500, actualCost: 3200, parts: [{ name: 'Hélice inox', qty: 1, cost: 2800 }] },
-  { id: '5', boatName: 'Veleiro Sol', title: 'Polimento e Enceramento', description: 'Manutenção estética preventiva', type: 'preventiva', status: 'concluida', priority: 'baixa', scheduledDate: '2026-02-20', estimatedCost: 500, actualCost: 480, parts: [] },
-  { id: '6', boatName: 'Mar Azul', title: 'Inspeção de Segurança', description: 'Verificação de coletes, extintores e sinalizadores', type: 'preventiva', status: 'cancelada', priority: 'media', scheduledDate: '2026-02-15', estimatedCost: 300, parts: [] },
-];
+import { useApi } from '@/hooks/useApi';
+import { maintenanceService } from '@/services';
+import type { Maintenance } from '@/types';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   agendada: { label: 'Agendada', color: 'bg-blue-50 text-blue-700', icon: Calendar },
@@ -51,17 +46,68 @@ export default function ManutencaoPage() {
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const agendadas = mockMaintenances.filter((m) => m.status === 'agendada').length;
-  const emAndamento = mockMaintenances.filter((m) => m.status === 'em_andamento').length;
-  const concluidas = mockMaintenances.filter((m) => m.status === 'concluida').length;
-  const totalEstimated = mockMaintenances.filter((m) => m.status !== 'cancelada').reduce((s, m) => s + m.estimatedCost, 0);
+  const { data: paginatedData, loading, error, refetch } = useApi(
+    () => maintenanceService.list(),
+    [],
+  );
 
-  const filtered = mockMaintenances.filter((m) => {
+  const maintenances: Maintenance[] = paginatedData?.data ?? [];
+
+  const agendadas = maintenances.filter((m) => m.status === 'agendada').length;
+  const emAndamento = maintenances.filter((m) => m.status === 'em_andamento').length;
+  const concluidas = maintenances.filter((m) => m.status === 'concluida').length;
+  const totalEstimated = maintenances.filter((m) => m.status !== 'cancelada').reduce((s, m) => s + m.estimatedCost, 0);
+
+  const filtered = maintenances.filter((m) => {
     if (search && !m.title.toLowerCase().includes(search.toLowerCase()) && !m.description.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterType && m.type !== filterType) return false;
     if (filterStatus && m.status !== filterStatus) return false;
     return true;
   });
+
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    await maintenanceService.create({
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      type: formData.get('type') as Maintenance['type'],
+      priority: formData.get('priority') as Maintenance['priority'],
+      boatId: formData.get('boatId') as string,
+      scheduledDate: formData.get('scheduledDate') as string,
+      estimatedCost: Number(formData.get('estimatedCost')) || 0,
+    });
+    setIsModalOpen(false);
+    refetch();
+  };
+
+  const handleComplete = async (id: string) => {
+    await maintenanceService.complete(id, {});
+    refetch();
+  };
+
+  const handleDelete = async (id: string) => {
+    await maintenanceService.delete(id);
+    refetch();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -166,7 +212,7 @@ export default function ManutencaoPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {maintenance.parts.map((part, i) => (
                         <span key={i} className="text-[10px] bg-muted px-2 py-0.5 rounded-full">
-                          {part.name} (x{part.qty}) - {formatCurrency(part.cost)}
+                          {part.name} (x{part.quantity}) - {formatCurrency(part.unitCost)}
                         </span>
                       ))}
                     </div>
@@ -176,8 +222,8 @@ export default function ManutencaoPage() {
                 {(maintenance.status === 'agendada' || maintenance.status === 'em_andamento') && (
                   <div className="flex gap-2 mt-4">
                     {maintenance.status === 'agendada' && <Button variant="outline" size="sm" className="flex-1">Iniciar</Button>}
-                    {maintenance.status === 'em_andamento' && <Button size="sm" className="flex-1">Concluir</Button>}
-                    <Button variant="ghost" size="sm">Cancelar</Button>
+                    {maintenance.status === 'em_andamento' && <Button size="sm" className="flex-1" onClick={() => handleComplete(maintenance.id)}>Concluir</Button>}
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(maintenance.id)}>Cancelar</Button>
                   </div>
                 )}
               </CardContent>
@@ -188,15 +234,15 @@ export default function ManutencaoPage() {
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Manutenção">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }}>
-          <Input label="Título" placeholder="Ex: Revisão do Motor" required />
-          <Textarea label="Descrição" placeholder="Descreva a manutenção..." rows={3} />
+        <form className="space-y-4" onSubmit={handleCreate}>
+          <Input name="title" label="Título" placeholder="Ex: Revisão do Motor" required />
+          <Textarea name="description" label="Descrição" placeholder="Descreva a manutenção..." rows={3} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Tipo">
+            <Select name="type" label="Tipo">
               <option value="preventiva">Preventiva</option>
               <option value="corretiva">Corretiva</option>
             </Select>
-            <Select label="Prioridade">
+            <Select name="priority" label="Prioridade">
               <option value="baixa">Baixa</option>
               <option value="media">Média</option>
               <option value="alta">Alta</option>
@@ -204,13 +250,13 @@ export default function ManutencaoPage() {
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Embarcação">
+            <Select name="boatId" label="Embarcação">
               <option value="1">Mar Azul</option>
               <option value="2">Veleiro Sol</option>
             </Select>
-            <Input label="Data Agendada" type="date" required />
+            <Input name="scheduledDate" label="Data Agendada" type="date" required />
           </div>
-          <Input label="Custo Estimado (R$)" type="number" placeholder="0,00" />
+          <Input name="estimatedCost" label="Custo Estimado (R$)" type="number" placeholder="0,00" />
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
             <Button type="submit" className="flex-1">Criar Manutenção</Button>

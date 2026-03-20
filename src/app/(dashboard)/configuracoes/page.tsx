@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   Mail,
@@ -25,6 +25,9 @@ import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
 import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
 import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
 import { useToast } from '@/components/ui/Toast';
+import { useApi } from '@/hooks/useApi';
+import { authService } from '@/services';
+import type { User as UserType } from '@/types';
 
 // ============================================
 // Masks (same as register)
@@ -75,22 +78,45 @@ export default function ConfiguracoesPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const toast = useToast();
 
-  // Mock user data (will come from API)
+  const { data: userData, loading, error, refetch } = useApi<UserType>(
+    () => authService.me(),
+  );
+
   const [profile, setProfile] = useState({
-    name: 'Gabriel',
-    email: 'gabriel@email.com',
-    phone: '(11) 99999-9999',
+    name: '',
+    email: '',
+    phone: '',
     documentType: 'cpf' as 'cpf' | 'cnpj',
-    document: '000.000.000-00',
-    birthDate: '1990-01-15',
-    cep: '01001-000',
-    street: 'Praça da Sé',
-    number: '100',
+    document: '',
+    birthDate: '',
+    cep: '',
+    street: '',
+    number: '',
     complement: '',
-    neighborhood: 'Sé',
-    city: 'São Paulo',
-    state: 'SP',
+    neighborhood: '',
+    city: '',
+    state: '',
   });
+
+  useEffect(() => {
+    if (userData) {
+      setProfile({
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        documentType: userData.documentType || 'cpf',
+        document: userData.document || '',
+        birthDate: userData.birthDate || '',
+        cep: userData.address?.cep || '',
+        street: userData.address?.street || '',
+        number: userData.address?.number || '',
+        complement: userData.address?.complement || '',
+        neighborhood: userData.address?.neighborhood || '',
+        city: userData.address?.city || '',
+        state: userData.address?.state || '',
+      });
+    }
+  }, [userData]);
 
   const [passwords, setPasswords] = useState({
     current: '',
@@ -152,7 +178,7 @@ export default function ConfiguracoesPage() {
     return age;
   }
 
-  function validateAndSave() {
+  async function validateAndSave() {
     const e: Record<string, string> = {};
 
     if (activeTab === 'pessoal') {
@@ -191,14 +217,36 @@ export default function ConfiguracoesPage() {
     if (Object.keys(e).length > 0) return;
 
     setIsSaving(true);
-    // TODO: Integrar com API Go
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      if (activeTab === 'pessoal' || activeTab === 'endereco') {
+        await authService.updateProfile({
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          documentType: profile.documentType,
+          document: profile.document,
+          birthDate: profile.birthDate,
+          address: {
+            cep: profile.cep,
+            street: profile.street,
+            number: profile.number,
+            complement: profile.complement,
+            neighborhood: profile.neighborhood,
+            city: profile.city,
+            state: profile.state,
+          },
+        });
+        refetch();
+      }
       toast.success('Alterações salvas com sucesso!');
       if (activeTab === 'seguranca') {
         setPasswords({ current: '', newPassword: '', confirm: '' });
       }
-    }, 1000);
+    } catch {
+      toast.error('Erro ao salvar alterações');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const tabs: { key: TabKey; label: string; icon: React.ElementType }[] = [
@@ -208,6 +256,23 @@ export default function ConfiguracoesPage() {
   ];
 
   const docMask = profile.documentType === 'cpf' ? maskCPF : maskCNPJ;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar perfil'}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
