@@ -10,6 +10,7 @@ import {
   Droplets,
   DollarSign,
   User,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -19,62 +20,62 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { StatCard } from '@/components/shared/StatCard';
+import { useApi } from '@/hooks/useApi';
+import { fuelingService } from '@/services';
 import type { Fueling } from '@/types';
-
-const mockFuelings: Fueling[] = [
-  {
-    id: '1',
-    boatId: '1',
-    boatName: 'Mar Azul',
-    date: '2026-02-25',
-    liters: 120,
-    totalValue: 960,
-    associationType: 'socio',
-    associatedUser: { id: '1', name: 'Gabriel Silva', email: '', createdAt: '' },
-    associatedUserId: '1',
-    observations: 'Tanque cheio antes do passeio',
-    createdAt: '2026-02-25',
-  },
-  {
-    id: '2',
-    boatId: '1',
-    boatName: 'Mar Azul',
-    date: '2026-02-23',
-    liters: 50,
-    totalValue: 400,
-    associationType: 'teste',
-    associatedTripId: '3',
-    observations: 'Abastecimento para teste do motor',
-    createdAt: '2026-02-23',
-  },
-  {
-    id: '3',
-    boatId: '2',
-    boatName: 'Veleiro Sol',
-    date: '2026-02-22',
-    liters: 80,
-    totalValue: 640,
-    associationType: 'socio',
-    associatedUser: { id: '5', name: 'Ana Paula', email: '', createdAt: '' },
-    associatedUserId: '5',
-    createdAt: '2026-02-22',
-  },
-];
 
 export default function AbastecimentosPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const totalLiters = mockFuelings.reduce((sum, f) => sum + f.liters, 0);
-  const totalCost = mockFuelings.reduce((sum, f) => sum + f.totalValue, 0);
-  const avgPricePerLiter = totalCost / totalLiters;
+  const { data: fuelings, loading, error, refetch } = useApi<Fueling[]>(
+    () => fuelingService.list(),
+  );
 
-  const filtered = mockFuelings.filter(
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !fuelings) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar abastecimentos'}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  const totalLiters = fuelings.reduce((sum, f) => sum + f.liters, 0);
+  const totalCost = fuelings.reduce((sum, f) => sum + f.totalValue, 0);
+  const avgPricePerLiter = totalLiters > 0 ? totalCost / totalLiters : 0;
+
+  const filtered = fuelings.filter(
     (f) =>
       f.boatName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       f.associatedUser?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       f.observations?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await fuelingService.create({
+      boatId: formData.get('boatId') as string,
+      date: formData.get('date') as string,
+      liters: Number(formData.get('liters')),
+      totalValue: Number(formData.get('totalValue')),
+      associationType: formData.get('associationType') as Fueling['associationType'],
+      associatedUserId: (formData.get('associatedUserId') as string) || undefined,
+      observations: (formData.get('observations') as string) || undefined,
+    });
+    setShowAddModal(false);
+    refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -199,34 +200,34 @@ export default function AbastecimentosPage() {
         title="Novo Abastecimento"
         description="Todo abastecimento deve estar associado a um sócio ou saída de teste"
       >
-        <form className="space-y-4 mt-4">
+        <form className="space-y-4 mt-4" onSubmit={handleCreate}>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Embarcação</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="boatId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="1">Mar Azul - Phantom 303</option>
               <option value="2">Veleiro Sol - Beneteau 34</option>
             </select>
           </div>
-          <Input label="Data" type="date" required />
+          <Input label="Data" name="date" type="date" required />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Litros" type="number" placeholder="0" step="0.1" required />
-            <Input label="Valor Total (R$)" type="number" placeholder="0,00" step="0.01" required />
+            <Input label="Litros" name="liters" type="number" placeholder="0" step="0.1" required />
+            <Input label="Valor Total (R$)" name="totalValue" type="number" placeholder="0,00" step="0.01" required />
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Associação</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="associationType" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="socio">Sócio (Individual)</option>
               <option value="teste">Saída de Teste (Rateado)</option>
             </select>
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Sócio / Saída</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="associatedUserId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="1">Gabriel Silva</option>
               <option value="2">Ricardo Mendes</option>
             </select>
           </div>
-          <Textarea label="Observações" placeholder="Detalhes (opcional)" />
+          <Textarea label="Observações" name="observations" placeholder="Detalhes (opcional)" />
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>
               Cancelar

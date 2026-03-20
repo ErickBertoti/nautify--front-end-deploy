@@ -11,6 +11,7 @@ import {
   DollarSign,
   Ship,
   Calendar,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -19,44 +20,89 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockFuelings = [
-  { id: '1', boatName: 'Mar Azul', date: '2026-03-05', liters: 180, totalValue: 1260, pricePerLiter: 7.0, associationType: 'socio', userName: 'Gabriel' },
-  { id: '2', boatName: 'Mar Azul', date: '2026-02-28', liters: 150, totalValue: 1050, pricePerLiter: 7.0, associationType: 'socio', userName: 'Pedro' },
-  { id: '3', boatName: 'Veleiro Sol', date: '2026-02-20', liters: 80, totalValue: 560, pricePerLiter: 7.0, associationType: 'socio', userName: 'Lucas' },
-  { id: '4', boatName: 'Mar Azul', date: '2026-02-15', liters: 200, totalValue: 1380, pricePerLiter: 6.9, associationType: 'teste', userName: 'Técnico' },
-  { id: '5', boatName: 'Mar Azul', date: '2026-02-10', liters: 160, totalValue: 1104, pricePerLiter: 6.9, associationType: 'socio', userName: 'Gabriel' },
-  { id: '6', boatName: 'Veleiro Sol', date: '2026-02-05', liters: 90, totalValue: 621, pricePerLiter: 6.9, associationType: 'socio', userName: 'Pedro' },
-];
-
-const mockMonthlyConsumption = [
-  { month: 'Out', liters: 420, cost: 2772 },
-  { month: 'Nov', liters: 380, cost: 2508 },
-  { month: 'Dez', liters: 510, cost: 3417 },
-  { month: 'Jan', liters: 450, cost: 3105 },
-  { month: 'Fev', liters: 680, cost: 4715 },
-  { month: 'Mar', liters: 180, cost: 1260 },
-];
-
-const mockBoatConsumption = [
-  { boat: 'Mar Azul', totalLiters: 690, totalCost: 4794, avgPerTrip: 172.5, trips: 4 },
-  { boat: 'Veleiro Sol', totalCost: 1181, totalLiters: 170, avgPerTrip: 85, trips: 2 },
-];
+import { useApi } from '@/hooks/useApi';
+import { fuelingService } from '@/services';
+import type { Fueling, FuelConsumptionSummary } from '@/types';
 
 export default function CombustivelPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterBoat, setFilterBoat] = useState('');
 
-  const totalLiters = mockFuelings.reduce((sum, f) => sum + f.liters, 0);
-  const totalCost = mockFuelings.reduce((sum, f) => sum + f.totalValue, 0);
-  const avgPrice = totalCost / totalLiters;
-  const avgPerTrip = totalLiters / 6; // mock trips
+  const { data: fuelings, loading: loadingFuelings, error: errorFuelings, refetch: refetchFuelings } = useApi<Fueling[]>(
+    () => fuelingService.list(),
+  );
 
-  const maxMonthLiters = Math.max(...mockMonthlyConsumption.map((m) => m.liters));
+  const { data: summary, loading: loadingSummary, error: errorSummary, refetch: refetchSummary } = useApi<FuelConsumptionSummary>(
+    () => fuelingService.getConsumptionSummary(),
+  );
+
+  const loading = loadingFuelings || loadingSummary;
+  const error = errorFuelings || errorSummary;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !fuelings || !summary) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar dados de combustível'}</p>
+        <Button variant="outline" size="sm" onClick={() => { refetchFuelings(); refetchSummary(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  const refetch = () => {
+    refetchFuelings();
+    refetchSummary();
+  };
+
+  const totalLiters = summary.totalLiters;
+  const totalCost = summary.totalCost;
+  const avgPrice = summary.avgPricePerLiter;
+  const avgPerTrip = summary.avgLitersPerTrip;
+
+  const monthlyData = summary.monthlyData || [];
+  const maxMonthLiters = monthlyData.length > 0 ? Math.max(...monthlyData.map((m) => m.liters)) : 1;
+
+  // Derive per-boat breakdown from fuelings list
+  const boatMap = new Map<string, { boat: string; totalLiters: number; totalCost: number; trips: number }>();
+  for (const f of fuelings) {
+    const name = f.boatName || 'Desconhecida';
+    const existing = boatMap.get(name) || { boat: name, totalLiters: 0, totalCost: 0, trips: 0 };
+    existing.totalLiters += f.liters;
+    existing.totalCost += f.totalValue;
+    existing.trips += 1;
+    boatMap.set(name, existing);
+  }
+  const boatConsumption = Array.from(boatMap.values()).map((b) => ({
+    ...b,
+    avgPerTrip: b.trips > 0 ? b.totalLiters / b.trips : 0,
+  }));
 
   const filtered = filterBoat
-    ? mockFuelings.filter((f) => f.boatName === filterBoat)
-    : mockFuelings;
+    ? fuelings.filter((f) => f.boatName === filterBoat)
+    : fuelings;
+
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await fuelingService.create({
+      boatId: formData.get('boatId') as string,
+      liters: Number(formData.get('liters')),
+      totalValue: Number(formData.get('totalValue')),
+      date: formData.get('date') as string,
+      associationType: formData.get('associationType') as Fueling['associationType'],
+      observations: (formData.get('observations') as string) || undefined,
+    });
+    setIsModalOpen(false);
+    refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -90,7 +136,7 @@ export default function CombustivelPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-end gap-3 h-40">
-              {mockMonthlyConsumption.map((month) => (
+              {monthlyData.map((month) => (
                 <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full flex justify-center h-32">
                     <div
@@ -116,7 +162,7 @@ export default function CombustivelPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mockBoatConsumption.map((boat) => (
+            {boatConsumption.map((boat) => (
               <div key={boat.boat} className="p-4 rounded-lg bg-muted/50 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{boat.boat}</span>
@@ -132,7 +178,7 @@ export default function CombustivelPage() {
                     <p className="text-[10px] text-muted-foreground">Custo</p>
                   </div>
                   <div>
-                    <p className="text-lg font-bold">{boat.avgPerTrip}L</p>
+                    <p className="text-lg font-bold">{boat.avgPerTrip.toFixed(1)}L</p>
                     <p className="text-[10px] text-muted-foreground">Média/saída</p>
                   </div>
                 </div>
@@ -148,8 +194,9 @@ export default function CombustivelPage() {
           <CardTitle>Histórico de Abastecimentos</CardTitle>
           <Select value={filterBoat} onChange={(e) => setFilterBoat(e.target.value)} className="w-auto">
             <option value="">Todas embarcações</option>
-            <option value="Mar Azul">Mar Azul</option>
-            <option value="Veleiro Sol">Veleiro Sol</option>
+            {Array.from(new Set(fuelings.map((f) => f.boatName).filter(Boolean))).map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
           </Select>
         </CardHeader>
         <CardContent className="p-0">
@@ -172,14 +219,14 @@ export default function CombustivelPage() {
                     <td className="px-6 py-3.5 text-sm text-muted-foreground">{formatDate(fueling.date)}</td>
                     <td className="px-6 py-3.5 text-sm font-medium">{fueling.boatName}</td>
                     <td className="px-6 py-3.5 text-right text-sm font-medium">{fueling.liters}L</td>
-                    <td className="px-6 py-3.5 text-right text-sm text-muted-foreground">{formatCurrency(fueling.pricePerLiter)}</td>
+                    <td className="px-6 py-3.5 text-right text-sm text-muted-foreground">{formatCurrency(fueling.pricePerLiter ?? (fueling.totalValue / fueling.liters))}</td>
                     <td className="px-6 py-3.5 text-right text-sm font-semibold">{formatCurrency(fueling.totalValue)}</td>
                     <td className="px-6 py-3.5">
                       <Badge variant={fueling.associationType === 'teste' ? 'outline' : 'secondary'}>
                         {fueling.associationType === 'teste' ? 'Teste' : 'Sócio'}
                       </Badge>
                     </td>
-                    <td className="px-6 py-3.5 text-sm text-muted-foreground">{fueling.userName}</td>
+                    <td className="px-6 py-3.5 text-sm text-muted-foreground">{fueling.associatedUser?.name || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -190,23 +237,23 @@ export default function CombustivelPage() {
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Abastecimento">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }}>
-          <Select label="Embarcação">
+        <form className="space-y-4" onSubmit={handleCreate}>
+          <Select label="Embarcação" name="boatId">
             <option value="1">Mar Azul</option>
             <option value="2">Veleiro Sol</option>
           </Select>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Litros" type="number" placeholder="0" required />
-            <Input label="Valor Total (R$)" type="number" placeholder="0,00" required />
+            <Input label="Litros" name="liters" type="number" placeholder="0" required />
+            <Input label="Valor Total (R$)" name="totalValue" type="number" placeholder="0,00" required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Data" type="date" required />
-            <Select label="Associação">
+            <Input label="Data" name="date" type="date" required />
+            <Select label="Associação" name="associationType">
               <option value="socio">Sócio</option>
               <option value="teste">Teste</option>
             </Select>
           </div>
-          <Input label="Observações" placeholder="Opcional" />
+          <Input label="Observações" name="observations" placeholder="Opcional" />
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
             <Button type="submit" className="flex-1">Registrar</Button>

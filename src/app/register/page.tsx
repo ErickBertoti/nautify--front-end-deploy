@@ -27,6 +27,8 @@ import { fetchCep } from '@/lib/cep';
 import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
 import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
 import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
+import { createClient } from '@/utils/supabase/client';
+import { authService } from '@/services';
 
 // ============================================
 // Masks
@@ -106,6 +108,7 @@ export default function RegisterPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
   const [isCepLoading, setIsCepLoading] = useState(false);
 
   async function handleCepChange(rawValue: string) {
@@ -205,7 +208,72 @@ export default function RegisterPage() {
   async function handleSubmit() {
     if (!validateStep(4)) return;
     setIsLoading(true);
-    setTimeout(() => router.push('/login'), 1500);
+    setSubmitError('');
+
+    try {
+      const supabase = createClient();
+      const { data, error: sbError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (sbError) {
+        setSubmitError(sbError.message === 'User already registered'
+          ? 'Este e-mail já está cadastrado'
+          : sbError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data.session) {
+        // Salva dados do formulário para completar registro após verificação de email
+        localStorage.setItem('nautify_pending_registration', JSON.stringify({
+          name: form.name,
+          phone: form.phone.replace(/\D/g, ''),
+          documentType: form.documentType,
+          document: form.document.replace(/\D/g, ''),
+          birthDate: form.birthDate || undefined,
+          address: {
+            cep: form.cep.replace(/\D/g, ''),
+            street: form.street,
+            number: form.number,
+            complement: form.complement,
+            neighborhood: form.neighborhood,
+            city: form.city,
+            state: form.state,
+          },
+        }));
+        setSubmitError('Verifique seu e-mail para confirmar o cadastro e depois faça login.');
+        setIsLoading(false);
+        return;
+      }
+
+      const res = await authService.supabaseRegister(data.session.access_token, {
+        name: form.name,
+        phone: form.phone.replace(/\D/g, ''),
+        documentType: form.documentType,
+        document: form.document.replace(/\D/g, ''),
+        birthDate: form.birthDate || undefined,
+        address: {
+          cep: form.cep.replace(/\D/g, ''),
+          street: form.street,
+          number: form.number,
+          complement: form.complement,
+          neighborhood: form.neighborhood,
+          city: form.city,
+          state: form.state,
+        },
+      });
+
+      localStorage.setItem('nautify_token', res.data.token);
+      router.push('/dashboard');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Erro ao criar conta');
+      setIsLoading(false);
+    }
   }
 
   const docMask = form.documentType === 'cpf' ? maskCPF : maskCNPJ;
@@ -667,6 +735,11 @@ export default function RegisterPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Error message */}
+          {submitError && (
+            <p className="mt-4 text-sm text-destructive text-center">{submitError}</p>
           )}
 
           {/* ── Navigation ── */}

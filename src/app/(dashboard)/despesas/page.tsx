@@ -9,6 +9,8 @@ import {
   Download,
   Calendar,
   ArrowUpDown,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -18,83 +20,9 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { expenseService } from '@/services';
 import type { Expense } from '@/types';
-
-const mockExpenses: Expense[] = [
-  {
-    id: '1',
-    boatId: '1',
-    description: 'Marina Mensalidade - Fev/2026',
-    amount: 3200,
-    category: 'fixa',
-    status: 'pendente',
-    splitCount: 3,
-    splitAmount: 1066.67,
-    dueDate: '2026-03-05',
-    createdBy: '1',
-    createdAt: '2026-02-01',
-  },
-  {
-    id: '2',
-    boatId: '1',
-    description: 'Manutenção Motor - Troca de Óleo',
-    amount: 1850,
-    category: 'variavel',
-    status: 'paga',
-    splitCount: 3,
-    splitAmount: 616.67,
-    createdBy: '1',
-    createdAt: '2026-02-15',
-  },
-  {
-    id: '3',
-    boatId: '1',
-    description: 'Seguro Anual Embarcação',
-    amount: 4500,
-    category: 'fixa',
-    status: 'pendente',
-    splitCount: 3,
-    splitAmount: 1500,
-    dueDate: '2026-03-01',
-    createdBy: '1',
-    createdAt: '2026-02-01',
-  },
-  {
-    id: '4',
-    boatId: '1',
-    description: 'Salário Marinheiro - Fev/2026',
-    amount: 2500,
-    category: 'fixa',
-    status: 'paga',
-    splitCount: 3,
-    splitAmount: 833.33,
-    createdBy: '1',
-    createdAt: '2026-02-01',
-  },
-  {
-    id: '5',
-    boatId: '1',
-    description: 'Dano Casco - Arranhão Lateral',
-    amount: 800,
-    category: 'individual',
-    individualMode: 'exclusivo',
-    status: 'pendente',
-    createdBy: '1',
-    createdAt: '2026-02-26',
-  },
-  {
-    id: '6',
-    boatId: '1',
-    description: 'Limpeza Geral',
-    amount: 350,
-    category: 'variavel',
-    status: 'paga',
-    splitCount: 3,
-    splitAmount: 116.67,
-    createdBy: '1',
-    createdAt: '2026-02-10',
-  },
-];
 
 const categoryColors: Record<string, string> = {
   fixa: 'bg-blue-50 text-blue-700',
@@ -127,18 +55,25 @@ export default function DespesasPage() {
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const toast = useToast();
 
-  const filtered = mockExpenses.filter((e) => {
+  const { data: expenses, loading, error, refetch } = useApi<Expense[]>(
+    () => expenseService.list(),
+    [],
+  );
+
+  const expenseList = expenses ?? [];
+
+  const filtered = expenseList.filter((e) => {
     const matchesSearch = e.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'todas' || e.category === filterCategory;
     const matchesStatus = filterStatus === 'todos' || e.status === filterStatus;
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const totalPending = mockExpenses
+  const totalPending = expenseList
     .filter((e) => e.status === 'pendente')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalPaid = mockExpenses
+  const totalPaid = expenseList
     .filter((e) => e.status === 'paga')
     .reduce((sum, e) => sum + e.amount, 0);
 
@@ -218,10 +153,52 @@ export default function DespesasPage() {
     },
   ], []);
 
-  function handleAddExpense(e: React.FormEvent) {
+  async function handleAddExpense(e: React.FormEvent) {
     e.preventDefault();
-    setShowAddModal(false);
-    toast.success('Despesa registrada com sucesso!');
+    try {
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
+      await expenseService.create({
+        description: formData.get('description') as string,
+        amount: Number(formData.get('amount')),
+        category: formData.get('category') as Expense['category'],
+        dueDate: formData.get('dueDate') as string || undefined,
+        boatId: formData.get('boatId') as string,
+      });
+      setShowAddModal(false);
+      toast.success('Despesa registrada com sucesso!');
+      refetch();
+    } catch {
+      toast.error('Erro ao registrar despesa.');
+    }
+  }
+
+  async function handleMarkAsPaid(id: string) {
+    try {
+      await expenseService.markAsPaid(id);
+      toast.success('Despesa marcada como paga!');
+      refetch();
+    } catch {
+      toast.error('Erro ao marcar despesa como paga.');
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
   }
 
   return (
@@ -321,24 +298,24 @@ export default function DespesasPage() {
         <form className="space-y-4 mt-4" onSubmit={handleAddExpense}>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Embarcação</label>
-            <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <select name="boatId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="1">Mar Azul - Phantom 303</option>
               <option value="2">Veleiro Sol - Beneteau 34</option>
             </select>
           </div>
-          <Input label="Descrição" placeholder="Ex: Mensalidade Marina" required />
+          <Input name="description" label="Descrição" placeholder="Ex: Mensalidade Marina" required />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Valor (R$)" type="number" placeholder="0,00" step="0.01" required />
+            <Input name="amount" label="Valor (R$)" type="number" placeholder="0,00" step="0.01" required />
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">Categoria</label>
-              <select className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <select name="category" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="fixa">Fixa</option>
                 <option value="variavel">Variável</option>
                 <option value="individual">Individual</option>
               </select>
             </div>
           </div>
-          <Input label="Data de Vencimento" type="date" />
+          <Input name="dueDate" label="Data de Vencimento" type="date" />
           <Textarea label="Observações" placeholder="Detalhes adicionais (opcional)" />
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>

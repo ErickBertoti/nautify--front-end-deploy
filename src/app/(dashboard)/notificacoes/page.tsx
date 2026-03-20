@@ -15,6 +15,7 @@ import {
   Trash2,
   Clock,
   Filter,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -22,49 +23,10 @@ import { Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatDate } from '@/lib/utils';
-
-const mockNotifications = [
-  {
-    id: '1', type: 'financeiro', title: 'Contribuição pendente',
-    message: 'A contribuição de Pedro Oliveira referente a Março/2026 está pendente.',
-    priority: 'media', read: false, createdAt: '2026-03-18T14:30:00',
-  },
-  {
-    id: '2', type: 'documento', title: 'Documento vencendo',
-    message: 'A Habilitação Náutica de Gabriel Santos vence em 15/04/2026.',
-    priority: 'alta', read: false, createdAt: '2026-03-18T10:00:00',
-  },
-  {
-    id: '3', type: 'manutencao', title: 'Manutenção agendada',
-    message: 'Revisão do motor da embarcação Mar Azul agendada para 25/03/2026.',
-    priority: 'media', read: false, createdAt: '2026-03-17T09:00:00',
-  },
-  {
-    id: '4', type: 'financeiro', title: 'Contribuição atrasada',
-    message: 'Lucas Ferreira possui 2 contribuições em atraso totalizando R$ 5.250,00.',
-    priority: 'alta', read: false, createdAt: '2026-03-16T08:00:00',
-  },
-  {
-    id: '5', type: 'agenda', title: 'Reserva confirmada',
-    message: 'Sua reserva da embarcação Mar Azul para 22/03/2026 foi confirmada.',
-    priority: 'baixa', read: true, createdAt: '2026-03-15T16:00:00',
-  },
-  {
-    id: '6', type: 'documento', title: 'TIEM vencido',
-    message: 'O TIEM da embarcação Mar Azul está vencido desde 10/01/2026. Renove imediatamente.',
-    priority: 'alta', read: true, createdAt: '2026-03-14T08:00:00',
-  },
-  {
-    id: '7', type: 'embarcacao', title: 'Nova embarcação adicionada',
-    message: 'A embarcação Veleiro Sol foi adicionada ao sistema com sucesso.',
-    priority: 'baixa', read: true, createdAt: '2026-03-10T11:30:00',
-  },
-  {
-    id: '8', type: 'sistema', title: 'Bem-vindo ao Nautify',
-    message: 'Sua conta foi criada com sucesso. Explore os recursos do sistema.',
-    priority: 'baixa', read: true, createdAt: '2026-03-01T08:00:00',
-  },
-];
+import { useApi } from '@/hooks/useApi';
+import { notificationService } from '@/services';
+import type { Notification } from '@/types';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 const typeConfig: Record<string, { label: string; icon: typeof Bell; color: string; bgColor: string }> = {
   financeiro: { label: 'Financeiro', icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
@@ -82,7 +44,7 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
 };
 
 function timeAgo(dateStr: string): string {
-  const now = new Date('2026-03-18T18:00:00');
+  const now = new Date();
   const date = new Date(dateStr);
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
@@ -97,30 +59,48 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function NotificacoesPage() {
-  const [notifications, setNotifications] = useState(mockNotifications);
   const [typeFilter, setTypeFilter] = useState('todos');
   const [readFilter, setReadFilter] = useState('todos');
 
-  const unread = notifications.filter((n) => !n.read).length;
-  const highPriority = notifications.filter((n) => n.priority === 'alta' && !n.read).length;
+  const { data: notifications, loading, error, refetch } = useApi<Notification[]>(
+    () => notificationService.list(),
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !notifications) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar notificações'}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  const unread = notifications.filter((n) => !n.isRead).length;
+  const highPriority = notifications.filter((n) => n.priority === 'alta' && !n.isRead).length;
 
   const filtered = notifications.filter((n) => {
     if (typeFilter !== 'todos' && n.type !== typeFilter) return false;
-    if (readFilter === 'nao-lidas' && n.read) return false;
-    if (readFilter === 'lidas' && !n.read) return false;
+    if (readFilter === 'nao-lidas' && n.isRead) return false;
+    if (readFilter === 'lidas' && !n.isRead) return false;
     return true;
   });
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const markAsRead = async (id: string) => {
+    await notificationService.markAsRead(id);
+    refetch();
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const markAllAsRead = async () => {
+    await notificationService.markAllAsRead();
+    refetch();
   };
 
   return (
@@ -172,7 +152,7 @@ export default function NotificacoesPage() {
           return (
             <Card
               key={notification.id}
-              className={`transition-all hover:shadow-sm ${!notification.read ? 'border-l-4 border-l-nautify-500 bg-nautify-50/20' : ''}`}
+              className={`transition-all hover:shadow-sm ${!notification.isRead ? 'border-l-4 border-l-nautify-500 bg-nautify-50/20' : ''}`}
             >
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start gap-3">
@@ -181,10 +161,10 @@ export default function NotificacoesPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className={`text-sm font-semibold ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      <h3 className={`text-sm font-semibold ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
                         {notification.title}
                       </h3>
-                      {!notification.read && <span className="w-2 h-2 rounded-full bg-nautify-500 shrink-0" />}
+                      {!notification.isRead && <span className="w-2 h-2 rounded-full bg-nautify-500 shrink-0" />}
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priority.color}`}>
                         {priority.label}
                       </span>
@@ -198,12 +178,12 @@ export default function NotificacoesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {!notification.read && (
+                    {!notification.isRead && (
                       <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)} title="Marcar como lida">
                         <CheckCheck className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => removeNotification(notification.id)} title="Remover">
+                    <Button variant="ghost" size="sm" title="Remover">
                       <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </div>
@@ -215,11 +195,11 @@ export default function NotificacoesPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <BellOff className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="font-medium">Nenhuma notificação</p>
-          <p className="text-sm">Você está em dia com tudo!</p>
-        </div>
+        <EmptyState 
+          icon={BellOff} 
+          title="Nenhuma notificação" 
+          description="Você está em dia com tudo!" 
+        />
       )}
     </div>
   );

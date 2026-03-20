@@ -15,6 +15,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,47 +24,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockPartners = [
-  {
-    id: '1', name: 'Gabriel Santos', email: 'gabriel@email.com', phone: '(11) 99999-1234',
-    boatName: 'Mar Azul', role: 'admin', status: 'ativo', participationPercent: 40,
-    monthlyContribution: 4200, joinedAt: '2024-06-01', totalContributed: 92400, pendingPayments: 0,
-    avatarInitials: 'GS',
-  },
-  {
-    id: '2', name: 'Pedro Oliveira', email: 'pedro@email.com', phone: '(11) 98888-5678',
-    boatName: 'Mar Azul', role: 'socio', status: 'ativo', participationPercent: 35,
-    monthlyContribution: 3675, joinedAt: '2024-06-01', totalContributed: 80850, pendingPayments: 3675,
-    avatarInitials: 'PO',
-  },
-  {
-    id: '3', name: 'Lucas Ferreira', email: 'lucas@email.com', phone: '(11) 97777-9012',
-    boatName: 'Mar Azul', role: 'socio', status: 'ativo', participationPercent: 25,
-    monthlyContribution: 2625, joinedAt: '2025-01-01', totalContributed: 36750, pendingPayments: 5250,
-    avatarInitials: 'LF',
-  },
-  {
-    id: '4', name: 'Ana Costa', email: 'ana@email.com', phone: '(11) 96666-3456',
-    boatName: 'Veleiro Sol', role: 'admin', status: 'ativo', participationPercent: 50,
-    monthlyContribution: 3000, joinedAt: '2025-03-01', totalContributed: 36000, pendingPayments: 0,
-    avatarInitials: 'AC',
-  },
-  {
-    id: '5', name: 'Marcos Silva', email: 'marcos@email.com', phone: '(11) 95555-7890',
-    boatName: 'Veleiro Sol', role: 'socio', status: 'inativo', participationPercent: 50,
-    monthlyContribution: 3000, joinedAt: '2025-03-01', totalContributed: 18000, pendingPayments: 0,
-    avatarInitials: 'MS',
-  },
-];
-
-const mockContributions = [
-  { id: '1', partner: 'Gabriel Santos', month: 'Março 2026', amount: 4200, status: 'pago', paidAt: '2026-03-01' },
-  { id: '2', partner: 'Pedro Oliveira', month: 'Março 2026', amount: 3675, status: 'pendente', paidAt: null },
-  { id: '3', partner: 'Lucas Ferreira', month: 'Março 2026', amount: 2625, status: 'atrasado', paidAt: null },
-  { id: '4', partner: 'Lucas Ferreira', month: 'Fevereiro 2026', amount: 2625, status: 'atrasado', paidAt: null },
-  { id: '5', partner: 'Ana Costa', month: 'Março 2026', amount: 3000, status: 'pago', paidAt: '2026-03-02' },
-];
+import { useApi } from '@/hooks/useApi';
+import { partnerService } from '@/services';
+import type { Partner, PartnerContribution, PaginatedResponse } from '@/types';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   ativo: { label: 'Ativo', color: 'bg-emerald-50 text-emerald-700' },
@@ -83,19 +46,97 @@ const roleLabels: Record<string, string> = {
   marinheiro: 'Marinheiro',
 };
 
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('');
+}
+
 export default function SociosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'socios' | 'contribuicoes'>('socios');
 
-  const ativos = mockPartners.filter((p) => p.status === 'ativo').length;
-  const totalContrib = mockContributions.reduce((s, c) => s + c.amount, 0);
-  const totalPending = mockContributions.filter((c) => c.status !== 'pago').reduce((s, c) => s + c.amount, 0);
+  const { data: partnersData, loading: loadingPartners, error: errorPartners, refetch: refetchPartners } = useApi<PaginatedResponse<Partner>>(
+    () => partnerService.list(),
+    [],
+  );
 
-  const filteredPartners = mockPartners.filter((p) => {
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+  // Fetch contributions for all partners — use first partner id or a sentinel
+  const { data: contributionsData, loading: loadingContributions, error: errorContributions, refetch: refetchContributions } = useApi<PaginatedResponse<PartnerContribution>>(
+    () => partnerService.contributions('all'),
+    [],
+  );
+
+  const refetch = () => {
+    refetchPartners();
+    refetchContributions();
+  };
+
+  const partners = partnersData?.data ?? [];
+  const contributions = contributionsData?.data ?? [];
+
+  const ativos = partners.filter((p) => p.status === 'ativo').length;
+  const totalContrib = contributions.reduce((s, c) => s + c.amount, 0);
+  const totalPending = contributions.filter((c) => c.status !== 'pago').reduce((s, c) => s + c.amount, 0);
+
+  const filteredPartners = partners.filter((p) => {
+    if (search && !p.user.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  const handleCreatePartner = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await partnerService.create({
+      user: {
+        name: formData.get('name') as string,
+        email: formData.get('email') as string,
+        phone: (formData.get('phone') as string) || undefined,
+      },
+      boatId: formData.get('boatId') as string,
+      role: formData.get('role') as Partner['role'],
+      participationPercent: Number(formData.get('participationPercent')),
+      monthlyContribution: Number(formData.get('monthlyContribution')),
+    } as Partial<Partner>);
+    setIsModalOpen(false);
+    refetch();
+  };
+
+  const handleDeactivatePartner = async (id: string) => {
+    await partnerService.deactivate(id);
+    refetch();
+  };
+
+  const handlePayContribution = async (contributionId: string) => {
+    await partnerService.payContribution(contributionId);
+    refetch();
+  };
+
+  const loading = loadingPartners || loadingContributions;
+  const error = errorPartners || errorContributions;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-nautify-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-red-600 font-medium">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -112,7 +153,7 @@ export default function SociosPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Sócios Ativos" value={String(ativos)} subtitle="participantes" icon={UserCheck} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Total Sócios" value={String(mockPartners.length)} subtitle="cadastrados" icon={Users} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
+        <StatCard title="Total Sócios" value={String(partners.length)} subtitle="cadastrados" icon={Users} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
         <StatCard title="Contribuições Mês" value={formatCurrency(totalContrib)} subtitle="total esperado" icon={DollarSign} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
         <StatCard title="Pendente" value={formatCurrency(totalPending)} subtitle="a receber" icon={AlertCircle} iconBgColor="bg-amber-50" iconColor="text-amber-600" />
       </div>
@@ -152,17 +193,17 @@ export default function SociosPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-full bg-nautify-100 flex items-center justify-center text-nautify-700 font-bold text-sm shrink-0">
-                        {partner.avatarInitials}
+                        {getInitials(partner.user.name)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm font-semibold truncate">{partner.name}</h3>
+                          <h3 className="text-sm font-semibold truncate">{partner.user.name}</h3>
                           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>{status.label}</span>
                           <Badge variant="outline">{roleLabels[partner.role]}</Badge>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {partner.email}</span>
-                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {partner.phone}</span>
+                          <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {partner.user.email}</span>
+                          {partner.user.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {partner.user.phone}</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge variant="secondary"><Ship className="h-3 w-3 mr-1" /> {partner.boatName}</Badge>
@@ -210,12 +251,12 @@ export default function SociosPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {mockContributions.map((contrib) => {
+                  {contributions.map((contrib) => {
                     const status = contribStatusConfig[contrib.status];
                     const StatusIcon = status.icon;
                     return (
                       <tr key={contrib.id} className="hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-4 text-sm font-medium">{contrib.partner}</td>
+                        <td className="px-6 py-4 text-sm font-medium">{contrib.partnerUser?.name ?? '—'}</td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">{contrib.month}</td>
                         <td className="px-6 py-4 text-right text-sm font-semibold">{formatCurrency(contrib.amount)}</td>
                         <td className="px-6 py-4 text-center">
@@ -225,7 +266,7 @@ export default function SociosPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">{contrib.paidAt ? formatDate(contrib.paidAt) : '—'}</td>
                         <td className="px-6 py-4">
-                          {contrib.status !== 'pago' && <Button variant="ghost" size="sm">Confirmar</Button>}
+                          {contrib.status !== 'pago' && <Button variant="ghost" size="sm" onClick={() => handlePayContribution(contrib.id)}>Confirmar</Button>}
                         </td>
                       </tr>
                     );
@@ -239,25 +280,25 @@ export default function SociosPage() {
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Adicionar Sócio">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }}>
-          <Input label="Nome Completo" placeholder="Ex: João Silva" required />
+        <form className="space-y-4" onSubmit={handleCreatePartner}>
+          <Input name="name" label="Nome Completo" placeholder="Ex: João Silva" required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="E-mail" type="email" placeholder="email@exemplo.com" required />
-            <Input label="Telefone" placeholder="(11) 99999-9999" />
+            <Input name="email" label="E-mail" type="email" placeholder="email@exemplo.com" required />
+            <Input name="phone" label="Telefone" placeholder="(11) 99999-9999" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Embarcação">
+            <Select name="boatId" label="Embarcação">
               <option value="1">Mar Azul</option>
               <option value="2">Veleiro Sol</option>
             </Select>
-            <Select label="Perfil">
+            <Select name="role" label="Perfil">
               <option value="socio">Sócio</option>
               <option value="admin">Administrador</option>
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Participação (%)" type="number" placeholder="0" required />
-            <Input label="Mensalidade (R$)" type="number" placeholder="0,00" required />
+            <Input name="participationPercent" label="Participação (%)" type="number" placeholder="0" required />
+            <Input name="monthlyContribution" label="Mensalidade (R$)" type="number" placeholder="0,00" required />
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>

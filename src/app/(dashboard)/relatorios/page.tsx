@@ -21,6 +21,9 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { formatCurrency } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { reportService } from '@/services';
+import type { ReportData } from '@/types';
 
 const reportTypes = [
   {
@@ -67,36 +70,47 @@ const reportTypes = [
   },
 ];
 
-const mockHistory = [
-  {
-    id: '1', type: 'financeiro', title: 'Relatório Financeiro - Mar 2026',
-    createdAt: '2026-03-15', format: 'PDF', size: '1.2 MB',
-  },
-  {
-    id: '2', type: 'despesas', title: 'Análise de Despesas - T1 2026',
-    createdAt: '2026-03-10', format: 'XLSX', size: '845 KB',
-  },
-  {
-    id: '3', type: 'combustivel', title: 'Consumo Combustível - Fev 2026',
-    createdAt: '2026-02-28', format: 'PDF', size: '960 KB',
-  },
-  {
-    id: '4', type: 'financeiro', title: 'Relatório Financeiro - Fev 2026',
-    createdAt: '2026-02-15', format: 'PDF', size: '1.1 MB',
-  },
-];
-
 export default function RelatoriosPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
-  const handleGenerate = (format: string) => {
+  const { data: reportHistory, loading, error, refetch } = useApi<ReportData[]>(
+    () => reportService.list(),
+  );
+
+  const handleGenerate = async (format: string) => {
+    if (!selectedType) return;
     setGenerating(true);
-    setTimeout(() => {
+    try {
+      await reportService.generate({
+        type: selectedType as ReportData['type'],
+        period: 'personalizado',
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+      });
+      refetch();
+    } finally {
       setGenerating(false);
       setSelectedType(null);
-    }, 2000);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !reportHistory) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar relatórios'}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -249,7 +263,7 @@ export default function RelatoriosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {mockHistory.map((report) => {
+                {reportHistory.map((report) => {
                   const typeInfo = reportTypes.find((r) => r.id === report.type);
                   const TypeIcon = typeInfo?.icon || FileText;
                   return (
@@ -260,11 +274,11 @@ export default function RelatoriosPage() {
                           <TypeIcon className="h-3 w-3 mr-1" /> {typeInfo?.title.split(' ')[0]}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{report.createdAt}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{report.generatedAt}</td>
                       <td className="px-6 py-4">
-                        <Badge variant="outline">{report.format}</Badge>
+                        <Badge variant="outline">{report.period}</Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-right text-muted-foreground">{report.size}</td>
+                      <td className="px-6 py-4 text-sm text-right text-muted-foreground">-</td>
                       <td className="px-6 py-4">
                         <Button variant="ghost" size="sm">
                           <Download className="h-4 w-4" />

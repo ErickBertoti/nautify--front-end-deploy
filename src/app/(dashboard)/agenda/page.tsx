@@ -11,6 +11,8 @@ import {
   Wrench,
   Users,
   Bell,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -18,6 +20,9 @@ import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { formatDate } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { calendarService } from '@/services';
+import type { CalendarEvent } from '@/types';
 
 const eventTypeConfig: Record<string, { label: string; color: string; bgColor: string; icon: typeof CalendarDays }> = {
   reserva: { label: 'Reserva', color: 'bg-nautify-500', bgColor: 'bg-nautify-50 text-nautify-700', icon: Ship },
@@ -32,17 +37,6 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-amber-50 text-amber-700' },
   cancelado: { label: 'Cancelado', color: 'bg-red-50 text-red-700' },
 };
-
-const mockEvents = [
-  { id: '1', title: 'Saída Mar Azul - Gabriel', type: 'reserva', status: 'confirmado', startDate: '2026-03-08T10:00', endDate: '2026-03-08T17:00', boatName: 'Mar Azul', user: 'Gabriel' },
-  { id: '2', title: 'Manutenção Preventiva Motor', type: 'manutencao', status: 'confirmado', startDate: '2026-03-10T08:00', endDate: '2026-03-10T12:00', boatName: 'Mar Azul', user: 'Técnico' },
-  { id: '3', title: 'Reserva Fim de Semana', type: 'reserva', status: 'pendente', startDate: '2026-03-14T14:00', endDate: '2026-03-16T10:00', boatName: 'Veleiro Sol', user: 'Pedro' },
-  { id: '4', title: 'Vencimento Seguro', type: 'lembrete', status: 'confirmado', startDate: '2026-03-15T00:00', endDate: '2026-03-15T23:59', boatName: 'Veleiro Sol', user: 'Sistema' },
-  { id: '5', title: 'Evento Corporativo', type: 'evento', status: 'confirmado', startDate: '2026-03-18T09:00', endDate: '2026-03-18T18:00', boatName: 'Mar Azul', user: 'Gabriel' },
-  { id: '6', title: 'Revisão Elétrica', type: 'manutencao', status: 'pendente', startDate: '2026-03-20T08:00', endDate: '2026-03-20T14:00', boatName: 'Veleiro Sol', user: 'Técnico' },
-  { id: '7', title: 'Saída Mar Azul - Pedro', type: 'reserva', status: 'confirmado', startDate: '2026-03-22T08:00', endDate: '2026-03-22T16:00', boatName: 'Mar Azul', user: 'Pedro' },
-  { id: '8', title: 'Limpeza Programada', type: 'manutencao', status: 'confirmado', startDate: '2026-03-25T07:00', endDate: '2026-03-25T11:00', boatName: 'Mar Azul', user: 'Técnico' },
-];
 
 const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -62,15 +56,66 @@ export default function AgendaPage() {
   const [filterType, setFilterType] = useState('');
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
 
+  const { data: events, loading, error, refetch } = useApi<CalendarEvent[]>(
+    () => calendarService.list(),
+    [],
+  );
+
   const calendarDays = getCalendarDays(currentYear, currentMonth);
   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
+  const allEvents = events ?? [];
+
   const getEventsForDay = (day: number) => {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return mockEvents.filter((e) => e.startDate.startsWith(dateStr));
+    return allEvents.filter((e) => e.startDate.startsWith(dateStr));
   };
 
-  const filteredEvents = filterType ? mockEvents.filter((e) => e.type === filterType) : mockEvents;
+  const filteredEvents = filterType ? allEvents.filter((e) => e.type === filterType) : allEvents;
+
+  const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await calendarService.create({
+      title: formData.get('title') as string,
+      type: formData.get('type') as CalendarEvent['type'],
+      boatId: (formData.get('boatId') as string) || undefined,
+      startDate: formData.get('startDate') as string,
+      endDate: formData.get('endDate') as string,
+      description: (formData.get('description') as string) || undefined,
+    } as Partial<CalendarEvent>);
+    setIsModalOpen(false);
+    refetch();
+  };
+
+  const handleCancelEvent = async (id: string) => {
+    await calendarService.cancel(id);
+    refetch();
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    await calendarService.delete(id);
+    refetch();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-nautify-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-red-600 font-medium">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -140,7 +185,8 @@ export default function AgendaPage() {
             <div className="grid grid-cols-7 gap-px">
               {calendarDays.map((day, idx) => {
                 const events = day ? getEventsForDay(day) : [];
-                const isToday = day === 8; // Mock today
+                const today = new Date();
+                const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
                 return (
                   <div
                     key={idx}
@@ -228,27 +274,27 @@ export default function AgendaPage() {
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Evento">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }}>
-          <Input label="Título" placeholder="Ex: Saída Mar Azul" required />
+        <form className="space-y-4" onSubmit={handleCreateEvent}>
+          <Input name="title" label="Título" placeholder="Ex: Saída Mar Azul" required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Tipo">
+            <Select name="type" label="Tipo">
               <option value="reserva">Reserva</option>
               <option value="manutencao">Manutenção</option>
               <option value="lembrete">Lembrete</option>
               <option value="evento">Evento</option>
               <option value="outro">Outro</option>
             </Select>
-            <Select label="Embarcação">
+            <Select name="boatId" label="Embarcação">
               <option value="">Nenhuma</option>
               <option value="1">Mar Azul</option>
               <option value="2">Veleiro Sol</option>
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Início" type="datetime-local" required />
-            <Input label="Fim" type="datetime-local" required />
+            <Input name="startDate" label="Início" type="datetime-local" required />
+            <Input name="endDate" label="Fim" type="datetime-local" required />
           </div>
-          <Textarea label="Descrição" placeholder="Detalhes do evento..." rows={3} />
+          <Textarea name="description" label="Descrição" placeholder="Detalhes do evento..." rows={3} />
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
             <Button type="submit">Criar Evento</Button>

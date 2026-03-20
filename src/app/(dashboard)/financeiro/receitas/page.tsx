@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -19,14 +20,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockRevenues = [
-  { id: '1', boatName: 'Mar Azul', description: 'Mensalidade Sócio - Gabriel', amount: 4200, category: 'mensalidade', status: 'recebida', dueDate: '2026-03-01', receivedDate: '2026-03-01' },
-  { id: '2', boatName: 'Mar Azul', description: 'Mensalidade Sócio - Pedro', amount: 4200, category: 'mensalidade', status: 'pendente', dueDate: '2026-03-05', receivedDate: null },
-  { id: '3', boatName: 'Veleiro Sol', description: 'Aluguel para evento', amount: 3500, category: 'aluguel', status: 'recebida', dueDate: '2026-02-28', receivedDate: '2026-02-28' },
-  { id: '4', boatName: 'Mar Azul', description: 'Mensalidade Sócio - Lucas', amount: 4200, category: 'mensalidade', status: 'atrasada', dueDate: '2026-02-28', receivedDate: null },
-  { id: '5', boatName: 'Veleiro Sol', description: 'Taxa de uso - Evento corporativo', amount: 1800, category: 'taxa', status: 'pendente', dueDate: '2026-03-10', receivedDate: null },
-];
+import { useApi } from '@/hooks/useApi';
+import { revenueService } from '@/services';
+import type { Revenue } from '@/types';
 
 const categoryColors: Record<string, string> = {
   mensalidade: 'bg-blue-50 text-blue-700',
@@ -56,17 +52,70 @@ export default function ReceitasPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const totalRecebidas = mockRevenues.filter((r) => r.status === 'recebida').reduce((sum, r) => sum + r.amount, 0);
-  const totalPendentes = mockRevenues.filter((r) => r.status === 'pendente').reduce((sum, r) => sum + r.amount, 0);
-  const totalAtrasadas = mockRevenues.filter((r) => r.status === 'atrasada').reduce((sum, r) => sum + r.amount, 0);
-  const total = mockRevenues.reduce((sum, r) => sum + r.amount, 0);
+  const { data: revenues, loading, error, refetch } = useApi<Revenue[]>(
+    () => revenueService.list(),
+    [],
+  );
 
-  const filtered = mockRevenues.filter((r) => {
+  const revenueList = revenues ?? [];
+
+  const totalRecebidas = revenueList.filter((r) => r.status === 'recebida').reduce((sum, r) => sum + r.amount, 0);
+  const totalPendentes = revenueList.filter((r) => r.status === 'pendente').reduce((sum, r) => sum + r.amount, 0);
+  const totalAtrasadas = revenueList.filter((r) => r.status === 'atrasada').reduce((sum, r) => sum + r.amount, 0);
+  const total = revenueList.reduce((sum, r) => sum + r.amount, 0);
+
+  const filtered = revenueList.filter((r) => {
     if (search && !r.description.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterCategory && r.category !== filterCategory) return false;
     if (filterStatus && r.status !== filterStatus) return false;
     return true;
   });
+
+  async function handleCreateRevenue(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
+      await revenueService.create({
+        description: formData.get('description') as string,
+        amount: Number(formData.get('amount')),
+        category: formData.get('category') as Revenue['category'],
+        dueDate: formData.get('dueDate') as string || undefined,
+        boatId: formData.get('boatId') as string,
+      });
+      setIsModalOpen(false);
+      refetch();
+    } catch {
+      // error handled silently
+    }
+  }
+
+  async function handleMarkAsReceived(id: string) {
+    try {
+      await revenueService.markAsReceived(id);
+      refetch();
+    } catch {
+      // error handled silently
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -144,7 +193,7 @@ export default function ReceitasPage() {
                           {categoryLabels[revenue.category]}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{formatDate(revenue.dueDate)}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{revenue.dueDate ? formatDate(revenue.dueDate) : '—'}</td>
                       <td className="px-6 py-4 text-right">
                         <span className="text-sm font-semibold text-emerald-600">{formatCurrency(revenue.amount)}</span>
                       </td>
@@ -155,7 +204,7 @@ export default function ReceitasPage() {
                       </td>
                       <td className="px-6 py-4">
                         {revenue.status !== 'recebida' && (
-                          <Button variant="ghost" size="sm">Confirmar</Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleMarkAsReceived(revenue.id)}>Confirmar</Button>
                         )}
                       </td>
                     </tr>
@@ -169,11 +218,11 @@ export default function ReceitasPage() {
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Receita">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }}>
-          <Input label="Descrição" placeholder="Ex: Mensalidade Sócio" required />
+        <form className="space-y-4" onSubmit={handleCreateRevenue}>
+          <Input name="description" label="Descrição" placeholder="Ex: Mensalidade Sócio" required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Valor (R$)" type="number" placeholder="0,00" required />
-            <Select label="Categoria">
+            <Input name="amount" label="Valor (R$)" type="number" placeholder="0,00" required />
+            <Select name="category" label="Categoria">
               <option value="mensalidade">Mensalidade</option>
               <option value="aluguel">Aluguel</option>
               <option value="evento">Evento</option>
@@ -182,11 +231,11 @@ export default function ReceitasPage() {
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Embarcação">
+            <Select name="boatId" label="Embarcação">
               <option value="1">Mar Azul</option>
               <option value="2">Veleiro Sol</option>
             </Select>
-            <Input label="Data de Vencimento" type="date" />
+            <Input name="dueDate" label="Data de Vencimento" type="date" />
           </div>
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>

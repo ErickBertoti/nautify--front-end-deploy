@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Ship, Plus, Users, MapPin, Search, MoreVertical, Calendar } from 'lucide-react';
+import { Ship, Plus, Users, MapPin, Search, MoreVertical, Calendar, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -9,83 +9,62 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { BOAT_TYPE_LABELS } from '@/constants';
+import { useApi } from '@/hooks/useApi';
+import { boatService } from '@/services';
 import type { Boat } from '@/types';
-
-const mockBoats: Boat[] = [
-  {
-    id: '1',
-    name: 'Mar Azul',
-    type: 'lancha',
-    model: 'Phantom 303',
-    year: 2022,
-    registrationNumber: 'BR-SP-12345',
-    marinaName: 'Marina Guarujá',
-    marinaLocation: 'Guarujá, SP',
-    createdAt: '2025-06-15',
-    members: [
-      {
-        id: '1',
-        user: { id: '1', name: 'Gabriel Silva', email: 'gabriel@email.com', createdAt: '' },
-        role: 'admin',
-        isActive: true,
-        joinedAt: '2025-06-15',
-      },
-      {
-        id: '2',
-        user: { id: '2', name: 'Ricardo Mendes', email: 'ricardo@email.com', createdAt: '' },
-        role: 'socio',
-        isActive: true,
-        joinedAt: '2025-07-01',
-      },
-      {
-        id: '3',
-        user: { id: '3', name: 'Carlos Marinheiro', email: 'carlos@email.com', createdAt: '' },
-        role: 'marinheiro',
-        isActive: true,
-        joinedAt: '2025-06-15',
-      },
-    ],
-  },
-  {
-    id: '2',
-    name: 'Veleiro Sol',
-    type: 'veleiro',
-    model: 'Beneteau 34',
-    year: 2020,
-    registrationNumber: 'BR-RJ-67890',
-    marinaName: 'Marina da Glória',
-    marinaLocation: 'Rio de Janeiro, RJ',
-    createdAt: '2025-09-01',
-    members: [
-      {
-        id: '4',
-        user: { id: '1', name: 'Gabriel Silva', email: 'gabriel@email.com', createdAt: '' },
-        role: 'socio',
-        isActive: true,
-        joinedAt: '2025-09-01',
-      },
-      {
-        id: '5',
-        user: { id: '5', name: 'Ana Paula', email: 'ana@email.com', createdAt: '' },
-        role: 'admin',
-        isActive: true,
-        joinedAt: '2025-09-01',
-      },
-    ],
-  },
-];
 
 export default function EmbarcacoesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { data: boats, loading, error, refetch } = useApi<Boat[]>(() => boatService.list());
 
-  const filteredBoats = mockBoats.filter(
+  const handleCreateBoat = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const form = new FormData(e.currentTarget);
+      await boatService.create({
+        name: form.get('name') as string,
+        type: form.get('type') as Boat['type'],
+        model: form.get('model') as string || undefined,
+        year: form.get('year') ? Number(form.get('year')) : undefined,
+        registrationNumber: form.get('registrationNumber') as string || undefined,
+        marinaName: form.get('marinaName') as string || undefined,
+      });
+      setShowAddModal(false);
+      refetch();
+    } catch (err) {
+      console.error('Erro ao criar embarcação:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filteredBoats = (boats || []).filter(
     (boat) =>
       boat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       boat.model?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getActiveMembers = (boat: Boat) => boat.members.filter((m) => m.isActive && m.role !== 'marinheiro');
+  const getActiveMembers = (boat: Boat) => boat.members?.filter((m) => m.isActive && m.role !== 'marinheiro') || [];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-nautify-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-destructive">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -165,7 +144,7 @@ export default function EmbarcacoesPage() {
                   {/* Members Avatars */}
                   <div className="pt-3 border-t border-border flex items-center justify-between">
                     <div className="flex -space-x-2">
-                      {boat.members.slice(0, 4).map((member, idx) => (
+                      {(boat.members || []).slice(0, 4).map((member, idx) => (
                         <div
                           key={member.id}
                           className="w-8 h-8 rounded-full bg-nautify-100 border-2 border-card flex items-center justify-center text-xs font-medium text-nautify-700"
@@ -174,9 +153,9 @@ export default function EmbarcacoesPage() {
                           {member.user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
                       ))}
-                      {boat.members.length > 4 && (
+                      {(boat.members || []).length > 4 && (
                         <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs font-medium text-muted-foreground">
-                          +{boat.members.length - 4}
+                          +{(boat.members || []).length - 4}
                         </div>
                       )}
                     </div>
@@ -206,29 +185,31 @@ export default function EmbarcacoesPage() {
         title="Nova Embarcação"
         description="Preencha os dados da embarcação"
       >
-        <form className="space-y-4 mt-4">
-          <Input label="Nome da embarcação" placeholder="Ex: Mar Azul" required />
+        <form className="space-y-4 mt-4" onSubmit={handleCreateBoat}>
+          <Input name="name" label="Nome da embarcação" placeholder="Ex: Mar Azul" required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Tipo" placeholder="Selecione o tipo">
+            <Select name="type" label="Tipo" placeholder="Selecione o tipo">
               <option value="lancha">Lancha</option>
               <option value="jet">Jet Ski</option>
               <option value="veleiro">Veleiro</option>
               <option value="outro">Outro</option>
             </Select>
-            <Input label="Ano" type="number" placeholder="2024" />
+            <Input name="year" label="Ano" type="number" placeholder="2024" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Modelo" placeholder="Ex: Phantom 303" />
-            <Input label="Nº Registro" placeholder="Ex: BR-SP-12345" />
+            <Input name="model" label="Modelo" placeholder="Ex: Phantom 303" />
+            <Input name="registrationNumber" label="Nº Registro" placeholder="Ex: BR-SP-12345" />
           </div>
           <div className="grid grid-cols-1 gap-4">
-            <Input label="Marina / Localização" placeholder="Ex: Marina Guarujá — Guarujá, SP" />
+            <Input name="marinaName" label="Marina / Localização" placeholder="Ex: Marina Guarujá — Guarujá, SP" />
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Criar Embarcação</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Criando...</> : 'Criar Embarcação'}
+            </Button>
           </div>
         </form>
       </Modal>

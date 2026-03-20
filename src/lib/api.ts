@@ -43,9 +43,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 }
 
 export const api = {
-  get: <T>(endpoint: string) => request<T>(endpoint),
-  post: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'POST', body }),
-  put: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'PUT', body }),
-  patch: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'PATCH', body }),
-  delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+  get: <T>(endpoint: string, headers?: Record<string, string>) => request<T>(endpoint, { headers }),
+  post: <T>(endpoint: string, body: unknown, headers?: Record<string, string>) => request<T>(endpoint, { method: 'POST', body, headers }),
+  put: <T>(endpoint: string, body: unknown, headers?: Record<string, string>) => request<T>(endpoint, { method: 'PUT', body, headers }),
+  patch: <T>(endpoint: string, body: unknown, headers?: Record<string, string>) => request<T>(endpoint, { method: 'PATCH', body, headers }),
+  delete: <T>(endpoint: string, headers?: Record<string, string>) => request<T>(endpoint, { method: 'DELETE', headers }),
 };

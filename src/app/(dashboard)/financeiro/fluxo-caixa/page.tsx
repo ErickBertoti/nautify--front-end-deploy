@@ -9,47 +9,39 @@ import {
   ArrowDownRight,
   DollarSign,
   Calendar,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockSummary = {
-  totalEntradas: 17900,
-  totalSaidas: 12880,
-  saldo: 5020,
-};
-
-const mockMonthlyData = [
-  { month: 'Set/2025', entradas: 9800, saidas: 8200, saldo: 1600 },
-  { month: 'Out/2025', entradas: 10200, saidas: 7800, saldo: 2400 },
-  { month: 'Nov/2025', entradas: 11500, saidas: 9200, saldo: 2300 },
-  { month: 'Dez/2025', entradas: 13000, saidas: 10500, saldo: 2500 },
-  { month: 'Jan/2026', entradas: 11800, saidas: 8900, saldo: 2900 },
-  { month: 'Fev/2026', entradas: 12600, saidas: 8450, saldo: 4150 },
-  { month: 'Mar/2026', entradas: 17900, saidas: 12880, saldo: 5020 },
-];
-
-const mockEntries = [
-  { id: '1', type: 'entrada', description: 'Mensalidade Gabriel - Mar/2026', amount: 4200, date: '2026-03-01', boatName: 'Mar Azul' },
-  { id: '2', type: 'saida', description: 'Marina Mensalidade', amount: 3200, date: '2026-03-02', boatName: 'Mar Azul' },
-  { id: '3', type: 'entrada', description: 'Aluguel evento corporativo', amount: 3500, date: '2026-03-03', boatName: 'Veleiro Sol' },
-  { id: '4', type: 'saida', description: 'Manutenção Motor', amount: 1850, date: '2026-03-04', boatName: 'Mar Azul' },
-  { id: '5', type: 'entrada', description: 'Mensalidade Pedro - Mar/2026', amount: 4200, date: '2026-03-05', boatName: 'Mar Azul' },
-  { id: '6', type: 'saida', description: 'Seguro Anual', amount: 4500, date: '2026-03-05', boatName: 'Veleiro Sol' },
-  { id: '7', type: 'entrada', description: 'Mensalidade Lucas - Mar/2026', amount: 4200, date: '2026-03-05', boatName: 'Mar Azul' },
-  { id: '8', type: 'saida', description: 'Limpeza do casco', amount: 650, date: '2026-03-06', boatName: 'Mar Azul' },
-  { id: '9', type: 'entrada', description: 'Taxa evento corporativo', amount: 1800, date: '2026-03-07', boatName: 'Veleiro Sol' },
-  { id: '10', type: 'saida', description: 'Combustível', amount: 480, date: '2026-03-07', boatName: 'Mar Azul' },
-  { id: '11', type: 'saida', description: 'Troca de vela', amount: 2200, date: '2026-03-08', boatName: 'Veleiro Sol' },
-];
+import { useApi } from '@/hooks/useApi';
+import { cashFlowService } from '@/services';
+import type { CashFlowSummary, CashFlowEntry } from '@/types';
 
 export default function FluxoCaixaPage() {
   const [period, setPeriod] = useState('mar2026');
-  const maxVal = Math.max(...mockMonthlyData.flatMap((m) => [m.entradas, m.saidas]));
 
-  const entriesWithBalance = mockEntries.reduce<(typeof mockEntries[number] & { runningBalance: number })[]>(
+  const { data: summary, loading: loadingSummary, error: errorSummary, refetch: refetchSummary } = useApi<CashFlowSummary>(
+    () => cashFlowService.getSummary(),
+    [],
+  );
+
+  const { data: entries, loading: loadingEntries, error: errorEntries, refetch: refetchEntries } = useApi<CashFlowEntry[]>(
+    () => cashFlowService.listEntries(),
+    [],
+  );
+
+  const loading = loadingSummary || loadingEntries;
+  const error = errorSummary || errorEntries;
+
+  const entryList = entries ?? [];
+  const monthlyData = summary?.entriesByMonth ?? [];
+  const maxVal = monthlyData.length > 0 ? Math.max(...monthlyData.flatMap((m) => [m.entradas, m.saidas])) : 1;
+
+  const entriesWithBalance = entryList.reduce<(CashFlowEntry & { runningBalance: number })[]>(
     (acc, entry) => {
       const prev = acc.length > 0 ? acc[acc.length - 1].runningBalance : 0;
       const runningBalance = prev + (entry.type === 'entrada' ? entry.amount : -entry.amount);
@@ -58,6 +50,24 @@ export default function FluxoCaixaPage() {
     },
     []
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={() => { refetchSummary(); refetchEntries(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -75,9 +85,9 @@ export default function FluxoCaixaPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Total Entradas" value={formatCurrency(mockSummary.totalEntradas)} subtitle="receitas do mês" icon={TrendingUp} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Total Saídas" value={formatCurrency(mockSummary.totalSaidas)} subtitle="despesas do mês" icon={TrendingDown} iconBgColor="bg-red-50" iconColor="text-red-600" />
-        <StatCard title="Saldo" value={formatCurrency(mockSummary.saldo)} subtitle="resultado líquido" icon={DollarSign} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
+        <StatCard title="Total Entradas" value={formatCurrency(summary?.totalEntradas ?? 0)} subtitle="receitas do mês" icon={TrendingUp} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+        <StatCard title="Total Saídas" value={formatCurrency(summary?.totalSaidas ?? 0)} subtitle="despesas do mês" icon={TrendingDown} iconBgColor="bg-red-50" iconColor="text-red-600" />
+        <StatCard title="Saldo" value={formatCurrency(summary?.saldo ?? 0)} subtitle="resultado líquido" icon={DollarSign} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
       </div>
 
       {/* Monthly Chart */}
@@ -90,7 +100,7 @@ export default function FluxoCaixaPage() {
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-1 sm:gap-3 h-52">
-            {mockMonthlyData.map((month) => (
+            {monthlyData.map((month) => (
               <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
                 <div className="flex gap-0.5 items-end w-full justify-center h-44">
                   <div

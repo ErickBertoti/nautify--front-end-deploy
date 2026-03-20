@@ -43,12 +43,36 @@ export const authService = {
     address?: UserAddress;
   }) => api.post<ApiResponse<User>>('/auth/register', data),
 
+  supabaseLogin: (supabaseToken: string) =>
+    api.post<ApiResponse<{ token: string; user: User }>>(
+      '/auth/supabase-login',
+      {},
+      { Authorization: `Bearer ${supabaseToken}` },
+    ),
+
+  supabaseRegister: (supabaseToken: string, data: {
+    name: string;
+    phone?: string;
+    documentType?: DocumentType;
+    document?: string;
+    birthDate?: string;
+    address?: UserAddress;
+  }) =>
+    api.post<ApiResponse<{ token: string; user: User }>>(
+      '/auth/supabase-register',
+      data,
+      { Authorization: `Bearer ${supabaseToken}` },
+    ),
+
   me: () => api.get<ApiResponse<User>>('/auth/me'),
 
   updateProfile: (data: Partial<Omit<User, 'id' | 'createdAt'>>) =>
     api.put<ApiResponse<User>>('/auth/profile', data),
 
-  logout: () => {
+  logout: async () => {
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    await supabase.auth.signOut();
     localStorage.removeItem('nautify_token');
     window.location.href = '/login';
   },
@@ -216,8 +240,13 @@ export const incidentService = {
 
   getById: (id: string) => api.get<ApiResponse<Incident>>(`/incidents/${id}`),
 
-  create: (data: FormData) =>
-    api.post<ApiResponse<Incident>>('/incidents', data),
+  create: (data: {
+    boatId: string;
+    tripId: string;
+    description: string;
+    estimatedCost: number;
+    photos?: string[];
+  }) => api.post<ApiResponse<Incident>>('/incidents', data),
 
   approve: (id: string, data: { expenseMode: 'exclusivo' | 'rateado'; responsibleUserId?: string }) =>
     api.patch<ApiResponse<Incident>>(`/incidents/${id}/approve`, data),
@@ -327,6 +356,18 @@ export const documentService = {
   getById: (id: string) => api.get<ApiResponse<Document>>(`/documents/${id}`),
 
   upload: (data: FormData) => api.post<ApiResponse<Document>>('/documents', data),
+
+  create: (data: {
+    title: string;
+    description?: string;
+    category: string;
+    boatId?: string;
+    fileUrl: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    expirationDate?: string;
+  }) => api.post<ApiResponse<Document>>('/documents', data),
 
   update: (id: string, data: Partial<Document>) =>
     api.put<ApiResponse<Document>>(`/documents/${id}`, data),

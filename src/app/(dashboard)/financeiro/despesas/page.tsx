@@ -10,6 +10,7 @@ import {
   Clock,
   AlertCircle,
   PieChart,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -17,15 +18,9 @@ import { Input, Select } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockExpenses = [
-  { id: '1', boatName: 'Mar Azul', description: 'Marina Mensalidade - Mar/2026', amount: 3200, category: 'fixa', status: 'pendente', dueDate: '2026-03-05', splitCount: 3, splitAmount: 1066.67 },
-  { id: '2', boatName: 'Mar Azul', description: 'Manutenção Motor', amount: 1850, category: 'variavel', status: 'paga', dueDate: '2026-02-15', splitCount: 3, splitAmount: 616.67 },
-  { id: '3', boatName: 'Veleiro Sol', description: 'Seguro Anual', amount: 4500, category: 'fixa', status: 'pendente', dueDate: '2026-03-01', splitCount: 2, splitAmount: 2250 },
-  { id: '4', boatName: 'Mar Azul', description: 'Limpeza do casco', amount: 650, category: 'variavel', status: 'paga', dueDate: '2026-02-20', splitCount: 3, splitAmount: 216.67 },
-  { id: '5', boatName: 'Mar Azul', description: 'Combustível saída 15/02', amount: 480, category: 'individual', status: 'paga', dueDate: '2026-02-16', splitCount: 1, splitAmount: 480 },
-  { id: '6', boatName: 'Veleiro Sol', description: 'Troca de vela', amount: 2200, category: 'variavel', status: 'vencida', dueDate: '2026-02-25', splitCount: 2, splitAmount: 1100 },
-];
+import { useApi } from '@/hooks/useApi';
+import { expenseService } from '@/services';
+import type { Expense } from '@/types';
 
 const categoryColors: Record<string, string> = {
   fixa: 'bg-blue-50 text-blue-700',
@@ -51,17 +46,70 @@ export default function DespesasPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const total = mockExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalPagas = mockExpenses.filter((e) => e.status === 'paga').reduce((sum, e) => sum + e.amount, 0);
-  const totalPendentes = mockExpenses.filter((e) => e.status === 'pendente').reduce((sum, e) => sum + e.amount, 0);
-  const totalVencidas = mockExpenses.filter((e) => e.status === 'vencida').reduce((sum, e) => sum + e.amount, 0);
+  const { data: expenses, loading, error, refetch } = useApi<Expense[]>(
+    () => expenseService.list(),
+    [],
+  );
 
-  const filtered = mockExpenses.filter((e) => {
+  const expenseList = expenses ?? [];
+
+  const total = expenseList.reduce((sum, e) => sum + e.amount, 0);
+  const totalPagas = expenseList.filter((e) => e.status === 'paga').reduce((sum, e) => sum + e.amount, 0);
+  const totalPendentes = expenseList.filter((e) => e.status === 'pendente').reduce((sum, e) => sum + e.amount, 0);
+  const totalVencidas = expenseList.filter((e) => e.status === 'vencida').reduce((sum, e) => sum + e.amount, 0);
+
+  const filtered = expenseList.filter((e) => {
     if (search && !e.description.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterCategory && e.category !== filterCategory) return false;
     if (filterStatus && e.status !== filterStatus) return false;
     return true;
   });
+
+  async function handleCreateExpense(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
+      await expenseService.create({
+        description: formData.get('description') as string,
+        amount: Number(formData.get('amount')),
+        category: formData.get('category') as Expense['category'],
+        dueDate: formData.get('dueDate') as string || undefined,
+        boatId: formData.get('boatId') as string,
+      });
+      setIsModalOpen(false);
+      refetch();
+    } catch {
+      // error handled silently
+    }
+  }
+
+  async function handleMarkAsPaid(id: string) {
+    try {
+      await expenseService.markAsPaid(id);
+      refetch();
+    } catch {
+      // error handled silently
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -86,9 +134,9 @@ export default function DespesasPage() {
       {/* Category Breakdown */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Fixas', color: 'bg-blue-500', value: mockExpenses.filter((e) => e.category === 'fixa').reduce((s, e) => s + e.amount, 0) },
-          { label: 'Variáveis', color: 'bg-purple-500', value: mockExpenses.filter((e) => e.category === 'variavel').reduce((s, e) => s + e.amount, 0) },
-          { label: 'Individuais', color: 'bg-amber-500', value: mockExpenses.filter((e) => e.category === 'individual').reduce((s, e) => s + e.amount, 0) },
+          { label: 'Fixas', color: 'bg-blue-500', value: expenseList.filter((e) => e.category === 'fixa').reduce((s, e) => s + e.amount, 0) },
+          { label: 'Variáveis', color: 'bg-purple-500', value: expenseList.filter((e) => e.category === 'variavel').reduce((s, e) => s + e.amount, 0) },
+          { label: 'Individuais', color: 'bg-amber-500', value: expenseList.filter((e) => e.category === 'individual').reduce((s, e) => s + e.amount, 0) },
         ].map((cat) => (
           <Card key={cat.label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -154,18 +202,18 @@ export default function DespesasPage() {
                           {categoryLabels[expense.category]}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{formatDate(expense.dueDate)}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{expense.dueDate ? formatDate(expense.dueDate) : '—'}</td>
                       <td className="px-6 py-4 text-right text-sm font-semibold">{formatCurrency(expense.amount)}</td>
                       <td className="px-6 py-4 text-right">
                         <span className="text-sm text-muted-foreground">
-                          {formatCurrency(expense.splitAmount!)} <span className="text-xs">(÷{expense.splitCount})</span>
+                          {expense.splitAmount ? formatCurrency(expense.splitAmount) : '—'} {expense.splitCount ? <span className="text-xs">(÷{expense.splitCount})</span> : null}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>{status.label}</span>
                       </td>
                       <td className="px-6 py-4">
-                        {expense.status === 'pendente' && <Button variant="ghost" size="sm">Pagar</Button>}
+                        {expense.status === 'pendente' && <Button variant="ghost" size="sm" onClick={() => handleMarkAsPaid(expense.id)}>Pagar</Button>}
                       </td>
                     </tr>
                   );
@@ -178,22 +226,22 @@ export default function DespesasPage() {
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Despesa">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }}>
-          <Input label="Descrição" placeholder="Ex: Marina Mensalidade" required />
+        <form className="space-y-4" onSubmit={handleCreateExpense}>
+          <Input name="description" label="Descrição" placeholder="Ex: Marina Mensalidade" required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Valor (R$)" type="number" placeholder="0,00" required />
-            <Select label="Categoria">
+            <Input name="amount" label="Valor (R$)" type="number" placeholder="0,00" required />
+            <Select name="category" label="Categoria">
               <option value="fixa">Fixa</option>
               <option value="variavel">Variável</option>
               <option value="individual">Individual</option>
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Embarcação">
+            <Select name="boatId" label="Embarcação">
               <option value="1">Mar Azul</option>
               <option value="2">Veleiro Sol</option>
             </Select>
-            <Input label="Data de Vencimento" type="date" />
+            <Input name="dueDate" label="Data de Vencimento" type="date" />
           </div>
           <Select label="Modo de Rateio">
             <option value="rateado">Rateado entre sócios</option>

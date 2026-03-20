@@ -525,6 +525,28 @@ h3 {
   }
 }
 
+/* ============================================
+   Landing Page - Blob Animation
+   ============================================ */
+@keyframes landing-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(20px, -30px) scale(1.05); }
+  50% { transform: translate(-10px, 20px) scale(0.95); }
+  75% { transform: translate(15px, 10px) scale(1.02); }
+}
+
+.animate-landing-blob {
+  animation: landing-blob 20s ease-in-out infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
 /* ── Prevent iOS Safari auto-zoom on input focus ──────────────────────────
    Safari zooms the page when a focused input has font-size < 16px.
    Applies 16px on screens ≤ 768px — desktop stays visually unchanged.
