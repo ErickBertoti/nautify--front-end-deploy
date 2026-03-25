@@ -1,19 +1,23 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { authService } from '@/services';
-import type { User } from '@/types';
+import type { User, UserRole } from '@/types';
 
 interface UserContextValue {
   user: User | null;
   loading: boolean;
   refetch: () => void;
+  getRoleForBoat: (boatId: string) => UserRole | null;
+  hasBoatRole: (boatId: string, roles: UserRole[]) => boolean;
 }
 
 const UserContext = createContext<UserContextValue>({
   user: null,
   loading: true,
   refetch: () => {},
+  getRoleForBoat: () => null,
+  hasBoatRole: () => false,
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
@@ -35,8 +39,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
+  const getRoleForBoat = useCallback((boatId: string): UserRole | null => {
+    if (!user?.memberships) return null;
+    const membership = user.memberships.find(m => m.boatId === boatId);
+    return membership?.role ?? null;
+  }, [user]);
+
+  const hasBoatRole = useCallback((boatId: string, roles: UserRole[]): boolean => {
+    const role = getRoleForBoat(boatId);
+    return role !== null && roles.includes(role);
+  }, [getRoleForBoat]);
+
+  const value = useMemo(() => ({
+    user, loading, refetch: fetchUser, getRoleForBoat, hasBoatRole,
+  }), [user, loading, fetchUser, getRoleForBoat, hasBoatRole]);
+
   return (
-    <UserContext.Provider value={{ user, loading, refetch: fetchUser }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );

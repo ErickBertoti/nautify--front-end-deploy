@@ -17,6 +17,12 @@ export interface UserAddress {
   state: string;
 }
 
+export interface UserMembership {
+  boatId: string;
+  boatName: string;
+  role: UserRole;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -27,6 +33,7 @@ export interface User {
   document?: string;
   birthDate?: string;
   address?: UserAddress;
+  memberships?: UserMembership[];
   createdAt: string;
 }
 
@@ -51,6 +58,7 @@ export interface Boat {
   marinaLocation?: string;
   createdAt: string;
   members: BoatMember[];
+  subscription?: Subscription;
 }
 
 export interface BoatMember {
@@ -365,6 +373,8 @@ export interface DashboardStats {
   expiringDocuments: number;
   unreadNotifications: number;
   cashFlowBalance: number;
+  revenueChangePercent: number;
+  expensesChangePercent: number;
   upcomingExpenses: Expense[];
   recentTrips: Trip[];
   recentIncidents: Incident[];
@@ -380,6 +390,35 @@ export interface DashboardStats {
     revenue: number;
     expense: number;
   }[];
+}
+
+// --- Billing ---
+export type SubscriptionStatus = 'pending' | 'active' | 'overdue' | 'canceled';
+
+export interface Plan {
+  id: string;
+  code: string;
+  name: string;
+  price: number;
+  billingCycle: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  boatId: string;
+  ownerUserId: string;
+  asaasCustomerId?: string;
+  asaasSubscriptionId?: string;
+  planId: string;
+  plan?: Plan;
+  status: SubscriptionStatus;
+  billingType: string;
+  value: number;
+  nextDueDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // --- API ---

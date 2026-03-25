@@ -31,6 +31,7 @@ import { OverviewChart } from '@/components/dashboard/OverviewChart';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useApi } from '@/hooks/useApi';
+import { useUser } from '@/contexts/UserContext';
 import { dashboardService } from '@/services';
 import type { DashboardStats } from '@/types';
 
@@ -67,9 +68,13 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const { user } = useUser();
   const { data: stats, loading, error } = useApi<DashboardStats>(
     () => dashboardService.getStats(),
   );
+
+  const currentMonthYear = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const firstName = user?.name?.split(' ')[0] ?? 'você';
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -119,9 +124,9 @@ export default function DashboardPage() {
       {/* Welcome + Quick Actions */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl text-foreground !font-heading tracking-tight">Olá, Gabriel!</h1>
+          <h1 className="text-3xl sm:text-4xl text-foreground !font-heading tracking-tight">Olá, {firstName}!</h1>
           <p className="text-muted-foreground mt-1">
-            Resumo das suas embarcações — Março de 2026
+            Resumo das suas embarcações — {currentMonthYear.charAt(0).toUpperCase() + currentMonthYear.slice(1)}
           </p>
         </div>
         <div className="flex gap-2">
@@ -145,7 +150,7 @@ export default function DashboardPage() {
           value={formatCurrency(stats.totalRevenueMonth)}
           subtitle="total recebido"
           icon={TrendingUp}
-          trend={{ value: 9, isPositive: true }}
+          trend={{ value: Math.abs(stats.revenueChangePercent ?? 0), isPositive: (stats.revenueChangePercent ?? 0) >= 0 }}
           iconBgColor="bg-emerald-100 dark:bg-emerald-500/20"
           iconColor="text-emerald-600 dark:text-emerald-400"
         />
@@ -154,7 +159,7 @@ export default function DashboardPage() {
           value={formatCurrency(stats.totalExpensesMonth)}
           subtitle="total acumulado"
           icon={TrendingDown}
-          trend={{ value: 12, isPositive: false }}
+          trend={{ value: Math.abs(stats.expensesChangePercent ?? 0), isPositive: (stats.expensesChangePercent ?? 0) <= 0 }}
           iconBgColor="bg-red-100 dark:bg-red-500/20"
           iconColor="text-red-600 dark:text-red-400"
         />

@@ -4,8 +4,9 @@ import React from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowDownUp, ArrowRight } from 'lucide-react';
+import { ArrowDownUp, ArrowRight, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/shared/EmptyState';
 import Link from 'next/link';
 
 interface ChartData {
@@ -19,19 +20,39 @@ interface OverviewChartProps {
 }
 
 export function OverviewChart({ data }: OverviewChartProps) {
+    const header = (
+        <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border/50">
+            <CardTitle className="flex items-center gap-2">
+                <ArrowDownUp className="h-5 w-5 text-muted-foreground group-hover:text-nautify-500 transition-colors" />
+                Receitas vs Despesas
+            </CardTitle>
+            <Link href="/financeiro/fluxo-caixa">
+                <Button variant="ghost" size="sm" className="hidden sm:flex group-hover:bg-primary/5">
+                    Ver detalhes <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+            </Link>
+        </CardHeader>
+    );
+
+    if (data.length === 0) {
+        return (
+            <Card className="lg:col-span-2 overflow-hidden flex flex-col pt-0 group">
+                {header}
+                <CardContent className="flex flex-1 items-center justify-center py-12">
+                    <EmptyState
+                        size="sm"
+                        icon={BarChart2}
+                        title="Nenhum dado ainda"
+                        description="As receitas e despesas aparecerão aqui conforme forem registradas."
+                    />
+                </CardContent>
+            </Card>
+        );
+    }
+
     return (
         <Card className="lg:col-span-2 overflow-hidden flex flex-col pt-0 group">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border/50">
-                <CardTitle className="flex items-center gap-2">
-                    <ArrowDownUp className="h-5 w-5 text-muted-foreground group-hover:text-nautify-500 transition-colors" />
-                    Receitas vs Despesas
-                </CardTitle>
-                <Link href="/financeiro/fluxo-caixa">
-                    <Button variant="ghost" size="sm" className="hidden sm:flex group-hover:bg-primary/5">
-                        Ver detalhes <ArrowRight className="h-4 w-4 ml-1" />
-                    </Button>
-                </Link>
-            </CardHeader>
+            {header}
             <CardContent className="flex-1 pb-0 px-1 sm:px-6">
                 <div className="h-[280px] w-full mt-4">
                     <ResponsiveContainer width="100%" height="100%">

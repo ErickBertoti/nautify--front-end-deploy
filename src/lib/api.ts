@@ -42,10 +42,27 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   return response.json();
 }
 
+async function requestBlob(endpoint: string): Promise<Blob> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('nautify_token') : null;
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro ao baixar arquivo');
+  }
+
+  return response.blob();
+}
+
 export const api = {
   get: <T>(endpoint: string, headers?: Record<string, string>) => request<T>(endpoint, { headers }),
   post: <T>(endpoint: string, body: unknown, headers?: Record<string, string>) => request<T>(endpoint, { method: 'POST', body, headers }),
   put: <T>(endpoint: string, body: unknown, headers?: Record<string, string>) => request<T>(endpoint, { method: 'PUT', body, headers }),
   patch: <T>(endpoint: string, body: unknown, headers?: Record<string, string>) => request<T>(endpoint, { method: 'PATCH', body, headers }),
   delete: <T>(endpoint: string, headers?: Record<string, string>) => request<T>(endpoint, { method: 'DELETE', headers }),
+  getBlob: (endpoint: string) => requestBlob(endpoint),
 };

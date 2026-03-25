@@ -125,8 +125,8 @@
   --color-nautify-950: var(--nautify-950);
   --color-accent-gold: var(--accent-gold);
   --color-accent-gold-foreground: var(--accent-gold-foreground);
-  --font-sans: var(--font-sans);
-  --font-heading: var(--font-heading);
+  --font-sans: var(--font-inter), sans-serif;
+  --font-heading: var(--font-inter), sans-serif;
   --font-mono: var(--font-mono);
   --radius-lg: 0.75rem;
   --radius-md: 0.5rem;
@@ -140,7 +140,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  @apply font-sans;
 }
 
 h1,
