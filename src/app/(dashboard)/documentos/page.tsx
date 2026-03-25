@@ -27,7 +27,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { formatDate } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { differenceInDays, parseISO } from 'date-fns';
 import { useApi } from '@/hooks/useApi';
 import { documentService } from '@/services';
 import { uploadFile } from '@/lib/storage';
@@ -193,9 +194,21 @@ export default function DocumentosPage() {
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${cat.color}`}>
                     <CatIcon className="h-5 w-5" />
                   </div>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${st.color}`}>
-                    <StIcon className="h-3 w-3" /> {st.label}
-                  </span>
+                  <div className="text-right">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${st.color}`}>
+                      <StIcon className="h-3 w-3" /> {st.label}
+                    </span>
+                    {doc.expirationDate && doc.status === 'vencendo' && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">
+                        {differenceInDays(parseISO(doc.expirationDate), new Date())} dias restantes
+                      </p>
+                    )}
+                    {doc.expirationDate && doc.status === 'vencido' && (
+                      <p className="text-[10px] text-red-600 mt-0.5">
+                        Vencido há {Math.abs(differenceInDays(parseISO(doc.expirationDate), new Date()))} dias
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <h3 className="text-sm font-semibold mb-1 line-clamp-2">{doc.title}</h3>
@@ -218,10 +231,28 @@ export default function DocumentosPage() {
                 </div>
 
                 <div className="flex gap-2 mt-4 pt-3 border-t border-border">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => window.open(doc.fileUrl, '_blank')}
+                  >
                     <Eye className="h-3.5 w-3.5 mr-1" /> Ver
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      const a = document.createElement('a');
+                      a.href = doc.fileUrl;
+                      a.download = doc.fileName;
+                      a.target = '_blank';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                    }}
+                  >
                     <Download className="h-3.5 w-3.5 mr-1" /> Baixar
                   </Button>
                 </div>

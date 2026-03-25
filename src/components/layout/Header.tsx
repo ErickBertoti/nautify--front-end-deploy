@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUser } from '@/contexts/UserContext';
 import { useApi } from '@/hooks/useApi';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { notificationService } from '@/services';
 import type { Notification } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -97,9 +98,10 @@ export function Header() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { user } = useUser();
-  const { data: notifications } = useApi<Notification[]>(() => notificationService.list());
+  const { data: notifications, refetch: refetchNotifications } = useApi<Notification[]>(() => notificationService.list());
+  const { unreadCount: realtimeUnreadCount } = useRealtimeNotifications({ userId: user?.id });
 
-  const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
+  const unreadCount = realtimeUnreadCount || notifications?.filter((n) => !n.isRead).length || 0;
   const recentNotifications = notifications?.slice(0, 5) || [];
 
   const toggleTheme = () => {

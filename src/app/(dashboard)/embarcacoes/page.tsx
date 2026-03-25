@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Ship, Plus, Users, MapPin, Search, MoreVertical, Calendar, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +12,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { BOAT_TYPE_LABELS } from '@/constants';
 import { useApi } from '@/hooks/useApi';
 import { boatService } from '@/services';
-import type { Boat } from '@/types';
+import type { Boat, SubscriptionStatus } from '@/types';
 
 export default function EmbarcacoesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -48,6 +49,13 @@ export default function EmbarcacoesPage() {
   );
 
   const getActiveMembers = (boat: Boat) => boat.members?.filter((m) => m.isActive && m.role !== 'marinheiro') || [];
+
+  const subBadge: Record<SubscriptionStatus, { label: string; className: string }> = {
+    active:   { label: 'Ativa',    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+    pending:  { label: 'Pendente', className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
+    overdue:  { label: 'Atrasada', className: 'bg-red-500/15 text-red-400 border-red-500/30' },
+    canceled: { label: 'Cancelada', className: 'bg-muted text-muted-foreground border-border' },
+  };
 
   if (loading) {
     return (
@@ -96,8 +104,9 @@ export default function EmbarcacoesPage() {
       {filteredBoats.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredBoats.map((boat) => (
-            <Card key={boat.id} className="hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="p-0">
+            <Link href={`/embarcacoes/${boat.id}`} key={boat.id} className="block group">
+              <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer h-full border-border/60 group-hover:border-nautify-500/50">
+                <CardContent className="p-0">
                 {/* Header visual */}
                 <div className="relative h-36 bg-gradient-to-br from-nautify-600 to-nautify-800 rounded-t-xl flex items-center justify-center overflow-hidden">
                   <div className="absolute inset-0 opacity-10">
@@ -141,6 +150,17 @@ export default function EmbarcacoesPage() {
                     <span>Reg. {boat.registrationNumber}</span>
                   </div>
 
+                  {/* Subscription status badge */}
+                  {boat.subscription && (() => {
+                    const badge = subBadge[boat.subscription.status];
+                    return (
+                      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.className}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                        {badge.label}
+                      </div>
+                    );
+                  })()}
+
                   {/* Members Avatars */}
                   <div className="pt-3 border-t border-border flex items-center justify-between">
                     <div className="flex -space-x-2">
@@ -159,13 +179,14 @@ export default function EmbarcacoesPage() {
                         </div>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="group-hover:bg-nautify-50 group-hover:text-nautify-700 transition-colors cursor-pointer">
                       Ver detalhes
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
+            </Link>
           ))}
         </div>
       ) : (

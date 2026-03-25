@@ -21,6 +21,8 @@ import type {
   ReportData,
   ReportFilter,
   DashboardStats,
+  Plan,
+  Subscription,
   ApiResponse,
   PaginatedResponse,
 } from '@/types';
@@ -398,6 +400,24 @@ export const notificationService = {
 };
 
 // ============================================
+// Planos
+// ============================================
+export const planService = {
+  list: () => api.get<ApiResponse<Plan[]>>('/plans'),
+};
+
+// ============================================
+// Assinaturas
+// ============================================
+export const subscriptionService = {
+  list: () => api.get<ApiResponse<Subscription[]>>('/subscriptions'),
+
+  getById: (id: string) => api.get<ApiResponse<Subscription>>(`/subscriptions/${id}`),
+
+  cancel: (id: string) => api.post<ApiResponse<void>>(`/subscriptions/${id}/cancel`, {}),
+};
+
+// ============================================
 // Relatórios
 // ============================================
 export const reportService = {
@@ -406,6 +426,11 @@ export const reportService = {
   list: (page = 1, limit = 20) =>
     api.get<PaginatedResponse<ReportData>>(`/reports?page=${page}&limit=${limit}`),
 
-  export: (id: string, format: 'pdf' | 'xlsx' | 'csv') =>
-    api.get<Blob>(`/reports/${id}/export?format=${format}`),
+  export: (filter: ReportFilter, format: 'pdf' | 'xlsx' | 'csv') => {
+    const params = new URLSearchParams({ format, type: filter.type, period: filter.period });
+    if (filter.boatId) params.set('boat_id', filter.boatId);
+    if (filter.startDate) params.set('start_date', filter.startDate);
+    if (filter.endDate) params.set('end_date', filter.endDate);
+    return api.getBlob(`/reports/export?${params.toString()}`);
+  },
 };
