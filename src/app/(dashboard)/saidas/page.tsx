@@ -20,22 +20,26 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats, useBoatMembers } from '@/hooks/useEntityOptions';
 import { tripService } from '@/services';
 import type { Trip } from '@/types';
 
 const statusColors: Record<string, string> = {
+  agendada: 'bg-amber-50 text-amber-700 border-amber-200',
   em_andamento: 'bg-blue-50 text-blue-700 border-blue-200',
   finalizada: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   com_ocorrencia: 'bg-red-50 text-red-700 border-red-200',
 };
 
 const statusLabels: Record<string, string> = {
+  agendada: 'Agendada',
   em_andamento: 'Em andamento',
   finalizada: 'Finalizada',
   com_ocorrencia: 'Com ocorrência',
 };
 
 const statusDots: Record<string, string> = {
+  agendada: 'bg-amber-500',
   em_andamento: 'bg-blue-500',
   finalizada: 'bg-emerald-500',
   com_ocorrencia: 'bg-red-500',
@@ -45,6 +49,9 @@ export default function SaidasPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
+  const [selectedBoatId, setSelectedBoatId] = useState('');
+  const { boats } = useBoats();
+  const { socios, sailors } = useBoatMembers(selectedBoatId);
 
   const { data: trips, loading, error, refetch } = useApi<Trip[]>(
     () => tripService.list(),
@@ -74,6 +81,21 @@ export default function SaidasPage() {
     const matchesStatus = filterStatus === 'todos' || t.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
+
+  const handleStart = async (id: string) => {
+    await tripService.start(id);
+    refetch();
+  };
+
+  const handleFinish = async (id: string) => {
+    await tripService.finish(id);
+    refetch();
+  };
+
+  const handleCancel = async (id: string) => {
+    await tripService.cancel(id);
+    refetch();
+  };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,7 +128,18 @@ export default function SaidasPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-amber-500" />
+            <div>
+              <p className="text-xs text-muted-foreground">Agendadas</p>
+              <p className="text-lg font-bold">
+                {trips.filter((t) => t.status === 'agendada').length}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
@@ -160,6 +193,7 @@ export default function SaidasPage() {
           className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="todos">Todos os status</option>
+          <option value="agendada">Agendada</option>
           <option value="em_andamento">Em andamento</option>
           <option value="finalizada">Finalizada</option>
           <option value="com_ocorrencia">Com ocorrência</option>
@@ -176,19 +210,17 @@ export default function SaidasPage() {
                   <div className="flex items-start gap-4">
                     <div
                       className={`flex items-center justify-center w-12 h-12 rounded-xl ${
-                        trip.status === 'em_andamento'
-                          ? 'bg-blue-50'
-                          : trip.status === 'com_ocorrencia'
-                          ? 'bg-red-50'
+                        trip.status === 'agendada' ? 'bg-amber-50'
+                          : trip.status === 'em_andamento' ? 'bg-blue-50'
+                          : trip.status === 'com_ocorrencia' ? 'bg-red-50'
                           : 'bg-emerald-50'
                       }`}
                     >
                       <Ship
                         className={`h-6 w-6 ${
-                          trip.status === 'em_andamento'
-                            ? 'text-blue-600'
-                            : trip.status === 'com_ocorrencia'
-                            ? 'text-red-600'
+                          trip.status === 'agendada' ? 'text-amber-600'
+                            : trip.status === 'em_andamento' ? 'text-blue-600'
+                            : trip.status === 'com_ocorrencia' ? 'text-red-600'
                             : 'text-emerald-600'
                         }`}
                       />
@@ -239,6 +271,19 @@ export default function SaidasPage() {
                           &ldquo;{trip.observations}&rdquo;
                         </p>
                       )}
+                      {(trip.status === 'agendada' || trip.status === 'em_andamento') && (
+                        <div className="flex gap-2 mt-2">
+                          {trip.status === 'agendada' && (
+                            <Button size="sm" onClick={() => handleStart(trip.id)}>Iniciar</Button>
+                          )}
+                          {trip.status === 'em_andamento' && (
+                            <Button size="sm" onClick={() => handleFinish(trip.id)}>Finalizar</Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-600" onClick={() => handleCancel(trip.id)}>
+                            Ocorrência
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -266,9 +311,14 @@ export default function SaidasPage() {
         <form className="space-y-4 mt-4" onSubmit={handleCreate}>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Embarcação</label>
-            <select name="boatId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="1">Mar Azul - Phantom 303</option>
-              <option value="2">Veleiro Sol - Beneteau 34</option>
+            <select
+              name="boatId"
+              className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              value={selectedBoatId}
+              onChange={(e) => setSelectedBoatId(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}{b.model ? ` — ${b.model}` : ''}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -284,15 +334,15 @@ export default function SaidasPage() {
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Sócio Responsável</label>
             <select name="responsibleUserId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="">Selecione (obrigatório se tipo Uso)</option>
-              <option value="1">Gabriel Silva</option>
-              <option value="2">Ricardo Mendes</option>
+              <option value="">{selectedBoatId ? 'Selecione...' : 'Selecione a embarcação primeiro'}</option>
+              {socios.map((m) => <option key={m.id} value={m.user.id}>{m.user.name}</option>)}
             </select>
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Marinheiro</label>
             <select name="sailorId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="3">Carlos Marinheiro</option>
+              <option value="">{selectedBoatId ? 'Nenhum (opcional)' : 'Selecione a embarcação primeiro'}</option>
+              {sailors.map((m) => <option key={m.id} value={m.user.id}>{m.user.name}</option>)}
             </select>
           </div>
           <Textarea label="Observações" name="observations" placeholder="Destino, propósito, etc. (opcional)" />

@@ -307,44 +307,50 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="p-0 flex-1">
-            <div className="divide-y divide-border/50">
-              {recentExpenses.map((expense, i) => (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 * i }}
-                  key={expense.id}
-                  className="flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors group cursor-pointer"
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted group-hover:bg-primary/10 group-hover:text-primary transition-colors shrink-0">
-                      <Receipt className="h-5 w-5 opacity-70 group-hover:opacity-100" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                        {expense.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${categoryColors[expense.category]}`}>
-                          {categoryLabels[expense.category]}
-                        </span>
-                        {expense.dueDate && (
-                          <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {formatDate(expense.dueDate)}
+            {recentExpenses.length > 0 ? (
+              <div className="divide-y divide-border/50">
+                {recentExpenses.map((expense, i) => (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 * i }}
+                    key={expense.id}
+                    className="flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted group-hover:bg-primary/10 group-hover:text-primary transition-colors shrink-0">
+                        <Receipt className="h-5 w-5 opacity-70 group-hover:opacity-100" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                          {expense.description}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${categoryColors[expense.category]}`}>
+                            {categoryLabels[expense.category]}
                           </span>
-                        )}
+                          {expense.dueDate && (
+                            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {formatDate(expense.dueDate)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-right shrink-0 ml-4 flex flex-col items-end gap-1">
-                    <p className="text-sm font-bold tracking-tight">{formatCurrency(expense.amount)}</p>
-                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusColors[expense.status]}`}>
-                      {statusLabels[expense.status]}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                    <div className="text-right shrink-0 ml-4 flex flex-col items-end gap-1">
+                      <p className="text-sm font-bold tracking-tight">{formatCurrency(expense.amount)}</p>
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusColors[expense.status]}`}>
+                        {statusLabels[expense.status]}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6">
+                <EmptyState size="sm" icon={Receipt} title="Sem despesas pendentes" description="Nenhuma despesa pendente este mês." />
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -362,27 +368,33 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="p-0 flex-1">
-            <div className="divide-y divide-border/50">
-              {upcomingEvents.map((event, i) => (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 * i + 0.2 }}
-                  key={event.id}
-                  className="flex items-center gap-4 px-6 py-4 hover:bg-muted/30 transition-colors cursor-pointer group"
-                >
-                  <div className={`w-1.5 h-12 rounded-full ${eventTypeColors[event.type] || eventTypeColors.outro} opacity-80 group-hover:opacity-100 transition-opacity`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{event.title}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">{formatDate(event.startDate)}</span>
+            {upcomingEvents.length > 0 ? (
+              <div className="divide-y divide-border/50">
+                {upcomingEvents.map((event, i) => (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 * i + 0.2 }}
+                    key={event.id}
+                    className="flex items-center gap-4 px-6 py-4 hover:bg-muted/30 transition-colors cursor-pointer group"
+                  >
+                    <div className={`w-1.5 h-12 rounded-full ${eventTypeColors[event.type] || eventTypeColors.outro} opacity-80 group-hover:opacity-100 transition-opacity`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{event.title}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground">{formatDate(event.startDate)}</span>
+                      </div>
                     </div>
-                  </div>
-                  <Badge variant="secondary" className="font-semibold">{event.type === 'manutencao' ? 'Manutenção' : event.type === 'reserva' ? 'Reserva' : event.type === 'lembrete' ? 'Lembrete' : 'Evento'}</Badge>
-                </motion.div>
-              ))}
-            </div>
+                    <Badge variant="secondary" className="font-semibold">{event.type === 'manutencao' ? 'Manutenção' : event.type === 'reserva' ? 'Reserva' : event.type === 'lembrete' ? 'Lembrete' : 'Evento'}</Badge>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6">
+                <EmptyState size="sm" icon={CalendarDays} title="Sem eventos próximos" description="Nenhum evento agendado nos próximos dias." />
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

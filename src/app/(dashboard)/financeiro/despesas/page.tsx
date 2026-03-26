@@ -2,23 +2,24 @@
 
 import React, { useState } from 'react';
 import {
-  Receipt,
   Plus,
   Search,
   DollarSign,
   CheckCircle,
   Clock,
   AlertCircle,
-  PieChart,
   Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
+import { useToast } from '@/components/ui/Toast';
+import { getErrorMessage } from '@/lib/errors';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { expenseService } from '@/services';
 import type { Expense } from '@/types';
 
@@ -45,6 +46,8 @@ export default function DespesasPage() {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const toast = useToast();
+  const { boats } = useBoats();
 
   const { data: expenses, loading, error, refetch } = useApi<Expense[]>(
     () => expenseService.list(),
@@ -79,8 +82,9 @@ export default function DespesasPage() {
       });
       setIsModalOpen(false);
       refetch();
-    } catch {
-      // error handled silently
+      toast.success('Despesa criada com sucesso!');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao criar despesa.'));
     }
   }
 
@@ -88,8 +92,9 @@ export default function DespesasPage() {
     try {
       await expenseService.markAsPaid(id);
       refetch();
-    } catch {
-      // error handled silently
+      toast.success('Despesa marcada como paga!');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao marcar despesa como paga.'));
     }
   }
 
@@ -238,8 +243,8 @@ export default function DespesasPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select name="boatId" label="Embarcação">
-              <option value="1">Mar Azul</option>
-              <option value="2">Veleiro Sol</option>
+              <option value="">Selecione...</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
             <Input name="dueDate" label="Data de Vencimento" type="date" />
           </div>

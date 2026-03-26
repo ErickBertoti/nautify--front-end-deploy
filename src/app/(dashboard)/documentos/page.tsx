@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import {
   FileText,
-  Plus,
   Search,
   Upload,
   Download,
@@ -20,16 +19,19 @@ import {
   FolderOpen,
   Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { formatDate, cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
+import { getErrorMessage } from '@/lib/errors';
+import { formatDate } from '@/lib/utils';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { documentService } from '@/services';
 import { uploadFile } from '@/lib/storage';
 import type { Document as NautifyDocument } from '@/types';
@@ -57,6 +59,8 @@ export default function DocumentosPage() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const toast = useToast();
+  const { boats } = useBoats();
 
   const { data: documents, loading, error, refetch } = useApi<NautifyDocument[]>(
     () => documentService.list(),
@@ -133,8 +137,9 @@ export default function DocumentosPage() {
                 mimeType: file.type,
               });
               refetch();
+              toast.success('Documento enviado com sucesso!');
             } catch (err) {
-              console.error('Upload failed:', err);
+              toast.error(getErrorMessage(err, 'Erro ao enviar documento.'));
             } finally {
               setUploading(false);
             }
@@ -294,8 +299,9 @@ export default function DocumentosPage() {
             refetch();
             setSelectedFile(null);
             setIsModalOpen(false);
+            toast.success('Documento enviado com sucesso!');
           } catch (err) {
-            console.error('Upload failed:', err);
+            toast.error(getErrorMessage(err, 'Erro ao enviar documento.'));
           } finally {
             setUploading(false);
           }
@@ -312,8 +318,7 @@ export default function DocumentosPage() {
             </Select>
             <Select name="boatId" label="Embarcação">
               <option value="">Nenhuma (pessoal)</option>
-              <option value="1">Mar Azul</option>
-              <option value="2">Veleiro Sol</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </div>
           <Input name="expirationDate" label="Data de Vencimento" type="date" required />

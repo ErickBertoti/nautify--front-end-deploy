@@ -25,8 +25,9 @@ import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { partnerService } from '@/services';
-import type { Partner, PartnerContribution, PaginatedResponse } from '@/types';
+import type { Partner, PartnerContribution } from '@/types';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   ativo: { label: 'Ativo', color: 'bg-emerald-50 text-emerald-700' },
@@ -59,15 +60,16 @@ export default function SociosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'socios' | 'contribuicoes'>('socios');
+  const { boats } = useBoats();
 
-  const { data: partnersData, loading: loadingPartners, error: errorPartners, refetch: refetchPartners } = useApi<PaginatedResponse<Partner>>(
+  const { data: partnersData, loading: loadingPartners, error: errorPartners, refetch: refetchPartners } = useApi(
     () => partnerService.list(),
     [],
   );
 
   // Fetch contributions for all partners — use first partner id or a sentinel
-  const { data: contributionsData, loading: loadingContributions, error: errorContributions, refetch: refetchContributions } = useApi<PaginatedResponse<PartnerContribution>>(
-    () => partnerService.contributions('all'),
+  const { data: contributionsData, loading: loadingContributions, error: errorContributions, refetch: refetchContributions } = useApi(
+    () => partnerService.listAllContributions(),
     [],
   );
 
@@ -76,8 +78,8 @@ export default function SociosPage() {
     refetchContributions();
   };
 
-  const partners = partnersData?.data ?? [];
-  const contributions = contributionsData?.data ?? [];
+  const partners: Partner[] = partnersData ?? [];
+  const contributions: PartnerContribution[] = contributionsData ?? [];
 
   const ativos = partners.filter((p) => p.status === 'ativo').length;
   const totalContrib = contributions.reduce((s, c) => s + c.amount, 0);
@@ -115,6 +117,11 @@ export default function SociosPage() {
   const handlePayContribution = async (contributionId: string) => {
     await partnerService.payContribution(contributionId);
     refetch();
+  };
+
+  const handleGenerateContributions = async () => {
+    const res = await partnerService.generateContributions();
+    refetchContributions();
   };
 
   const loading = loadingPartners || loadingContributions;
@@ -226,6 +233,13 @@ export default function SociosPage() {
                             </p>
                           </div>
                         </div>
+                        {partner.status === 'ativo' && (
+                          <div className="mt-3 flex justify-end">
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 text-xs" onClick={() => handleDeactivatePartner(partner.id)}>
+                              <UserX className="h-3.5 w-3.5 mr-1" /> Desativar
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -236,6 +250,12 @@ export default function SociosPage() {
         </>
       ) : (
         /* Contributions Tab */
+        <>
+        <div className="flex justify-end">
+          <Button onClick={handleGenerateContributions}>
+            <DollarSign className="h-4 w-4 mr-2" /> Gerar Contribuições do Mês
+          </Button>
+        </div>
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -276,6 +296,7 @@ export default function SociosPage() {
             </div>
           </CardContent>
         </Card>
+        </>
       )}
 
       {/* Modal */}
@@ -287,13 +308,14 @@ export default function SociosPage() {
             <Input name="phone" label="Telefone" placeholder="(11) 99999-9999" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select name="boatId" label="Embarcação">
-              <option value="1">Mar Azul</option>
-              <option value="2">Veleiro Sol</option>
+            <Select name="boatId" label="Embarcação" required>
+              <option value="">Selecione...</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
             <Select name="role" label="Perfil">
               <option value="socio">Sócio</option>
               <option value="admin">Administrador</option>
+              <option value="marinheiro">Marinheiro</option>
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -22,6 +22,7 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats, useTrips } from '@/hooks/useEntityOptions';
 import { incidentService } from '@/services';
 import { uploadFile } from '@/lib/storage';
 import type { Incident } from '@/types';
@@ -39,13 +40,16 @@ export default function ChamadosPage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedBoatId, setSelectedBoatId] = useState('');
+  const { boats } = useBoats();
+  const { trips } = useTrips(selectedBoatId);
 
   const { data: paginatedData, loading, error, refetch } = useApi(
     () => incidentService.list(),
     [],
   );
 
-  const incidents: Incident[] = paginatedData?.data ?? [];
+  const incidents: Incident[] = paginatedData ?? [];
 
   const filtered = incidents.filter((i) => {
     const matchesSearch =
@@ -285,16 +289,22 @@ export default function ChamadosPage() {
         <form className="space-y-4 mt-4" onSubmit={handleCreate}>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Embarcação</label>
-            <select name="boatId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="1">Mar Azul - Phantom 303</option>
-              <option value="2">Veleiro Sol - Beneteau 34</option>
+            <select
+              name="boatId"
+              className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              value={selectedBoatId}
+              onChange={(e) => setSelectedBoatId(e.target.value)}
+              required
+            >
+              <option value="">Selecione...</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}{b.model ? ` — ${b.model}` : ''}</option>)}
             </select>
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Saída Relacionada</label>
-            <select name="tripId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="2">25/02/2026 - Ricardo Mendes</option>
-              <option value="1">27/02/2026 - Gabriel Silva (em andamento)</option>
+            <select name="tripId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" required>
+              <option value="">{selectedBoatId ? 'Selecione...' : 'Selecione a embarcação primeiro'}</option>
+              {trips.map((t) => <option key={t.id} value={t.id}>{t.startDate ? new Date(t.startDate).toLocaleDateString('pt-BR') : t.id} — {t.status}</option>)}
             </select>
           </div>
           <Textarea

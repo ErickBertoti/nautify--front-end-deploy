@@ -61,15 +61,14 @@ async function loadCities(): Promise<CityOption[]> {
   if (fetchPromise) return fetchPromise;
 
   fetchPromise = (async () => {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20000);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
 
+    try {
       const res = await fetch(
         'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome',
         { signal: controller.signal }
       );
-      clearTimeout(timer);
 
       if (!res.ok) throw new Error(`IBGE API ${res.status}`);
 
@@ -82,10 +81,11 @@ async function loadCities(): Promise<CityOption[]> {
 
       cachedCities = cities;
       return cities;
-    } catch (err) {
-      console.error('[CityAutocomplete] Falha ao carregar cidades do IBGE:', err);
+    } catch {
       fetchPromise = null;
       return [];
+    } finally {
+      clearTimeout(timer);
     }
   })();
 

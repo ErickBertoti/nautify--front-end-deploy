@@ -18,11 +18,16 @@ import {
   AlertTriangle,
   Loader2,
   FileText,
-  Clock
+  Clock,
+  Plus,
+  Camera,
 } from 'lucide-react';
+import { uploadFile } from '@/lib/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { Input, Select } from '@/components/ui/Input';
 import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
@@ -37,9 +42,14 @@ export default function BoatDetailsPage() {
   const boatId = (params.id as string) || '';
   
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'financeiro' | 'historico'>('visao_geral');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [editImage, setEditImage] = useState<File | null>(null);
 
   // Load Main Boat
-  const { data: boat, loading: loadingBoat, error: errorBoat } = useApi<Boat>(
+  const { data: boat, loading: loadingBoat, error: errorBoat, refetch: refetchBoat } = useApi<Boat>(
     () => boatService.getById(boatId),
     [boatId]
   );
@@ -63,6 +73,60 @@ export default function BoatDetailsPage() {
   const expenses = expensesData || [];
   const trips = tripsData || [];
   const incidents = incidentsData || [];
+
+  const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setActionLoading(true);
+    try {
+      const fd = new FormData(e.currentTarget);
+      let imageUrl: string | undefined;
+      if (editImage) {
+        const { url } = await uploadFile('boats', editImage);
+        imageUrl = url;
+      }
+      await boatService.update(boatId, {
+        name: fd.get('name') as string,
+        type: fd.get('type') as Boat['type'],
+        model: (fd.get('model') as string) || undefined,
+        year: fd.get('year') ? Number(fd.get('year')) : undefined,
+        registrationNumber: (fd.get('registrationNumber') as string) || undefined,
+        marinaName: (fd.get('marinaName') as string) || undefined,
+        marinaLocation: (fd.get('marinaLocation') as string) || undefined,
+        ...(imageUrl ? { imageUrl } : {}),
+      });
+      setShowEditModal(false);
+      setEditImage(null);
+      refetchBoat();
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setActionLoading(true);
+    try {
+      await boatService.delete(boatId);
+      router.push('/embarcacoes');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddMember = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setActionLoading(true);
+    try {
+      const fd = new FormData(e.currentTarget);
+      await boatService.addMember(boatId, {
+        userId: fd.get('userId') as string,
+        role: fd.get('role') as string,
+      });
+      setShowAddMemberModal(false);
+      refetchBoat();
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (loadingBoat) {
     return (
@@ -97,13 +161,19 @@ export default function BoatDetailsPage() {
 
       {/* Hero Header */}
       <div className="relative rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
-        <div className="absolute inset-0 h-40 bg-gradient-to-br from-nautify-800 via-nautify-700 to-nautify-600">
-           <div className="absolute inset-0 opacity-10">
-            <svg className="w-full h-full" viewBox="0 0 400 160" preserveAspectRatio="none">
-              <path d="M0 80 Q100 30 200 80 T400 80" fill="none" stroke="white" strokeWidth="2" />
-              <path d="M0 120 Q100 70 200 120 T400 120" fill="none" stroke="white" strokeWidth="1" />
-            </svg>
-          </div>
+        <div className="absolute inset-0 h-40 overflow-hidden">
+          {boat.imageUrl ? (
+            <img src={boat.imageUrl} alt={boat.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-nautify-800 via-nautify-700 to-nautify-600">
+              <div className="absolute inset-0 opacity-10">
+                <svg className="w-full h-full" viewBox="0 0 400 160" preserveAspectRatio="none">
+                  <path d="M0 80 Q100 30 200 80 T400 80" fill="none" stroke="white" strokeWidth="2" />
+                  <path d="M0 120 Q100 70 200 120 T400 120" fill="none" stroke="white" strokeWidth="1" />
+                </svg>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="relative z-10 pt-28 px-6 pb-6 sm:px-8 sm:pb-8 flex flex-col sm:flex-row gap-6 items-start sm:items-end">
@@ -140,10 +210,10 @@ export default function BoatDetailsPage() {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto pb-2">
-             <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm border-border">
+             <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm border-border" onClick={() => setShowEditModal(true)}>
                <Edit className="h-4 w-4 mr-2" /> Editar
              </Button>
-             <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 border-destructive/20 hover:border-destructive/30">
+             <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 border-destructive/20 hover:border-destructive/30" onClick={() => setShowDeleteConfirm(true)}>
                <Trash2 className="h-4 w-4" />
              </Button>
           </div>
@@ -193,11 +263,14 @@ export default function BoatDetailsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <Card className="border border-border/60 shadow-sm">
-                  <CardHeader className="bg-muted/20 border-b border-border/50">
+                  <CardHeader className="bg-muted/20 border-b border-border/50 flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Users className="h-5 w-5 text-nautify-600" />
                       Sócios e Participantes
                     </CardTitle>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddMemberModal(true)}>
+                      <Plus className="h-4 w-4 mr-1" /> Adicionar
+                    </Button>
                   </CardHeader>
                   <CardContent className="pt-6">
                     {activeMembers.length > 0 ? (
@@ -226,7 +299,7 @@ export default function BoatDetailsPage() {
                         title="Nenhum sócio ativo" 
                         description="Adicione membros para dividirem os custos e utilizarem a embarcação."
                         actionLabel="Adicionar Sócio"
-                        onAction={() => {}} 
+                        onAction={() => setShowAddMemberModal(true)}
                       />
                     )}
                   </CardContent>
@@ -293,7 +366,7 @@ export default function BoatDetailsPage() {
                       <Receipt className="h-5 w-5 text-muted-foreground" />
                       Histórico Recente de Despesas
                     </CardTitle>
-                    <Link href={`/despesas?boat_id=${boatId}`}>
+                    <Link href={`/financeiro/despesas?boat_id=${boatId}`}>
                        <Button variant="outline" size="sm" className="bg-background shadow-sm hover:bg-muted text-foreground cursor-pointer">Ver Relatório Total</Button>
                     </Link>
                   </CardHeader>
@@ -415,6 +488,87 @@ export default function BoatDetailsPage() {
 
         </motion.div>
       </AnimatePresence>
+
+      {/* Edit Modal */}
+      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditImage(null); }} title="Editar Embarcação">
+        <form className="space-y-4 mt-2" onSubmit={handleEdit}>
+          <Input name="name" label="Nome" defaultValue={boat?.name} required />
+          <div className="grid grid-cols-2 gap-4">
+            <Select name="type" label="Tipo" defaultValue={boat?.type}>
+              <option value="lancha">Lancha</option>
+              <option value="jet">Jet Ski</option>
+              <option value="veleiro">Veleiro</option>
+              <option value="outro">Outro</option>
+            </Select>
+            <Input name="year" label="Ano" type="number" defaultValue={boat?.year} />
+          </div>
+          <Input name="model" label="Modelo" defaultValue={boat?.model} />
+          <Input name="registrationNumber" label="Registro" defaultValue={boat?.registrationNumber} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input name="marinaName" label="Marina" defaultValue={boat?.marinaName} />
+            <Input name="marinaLocation" label="Localização" defaultValue={boat?.marinaLocation} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium">Foto da embarcação</label>
+            <input type="file" accept="image/png,image/jpeg" className="hidden" id="edit-boat-image-input"
+              onChange={(e) => setEditImage(e.target.files?.[0] || null)} />
+            <label htmlFor="edit-boat-image-input" className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-nautify-300 transition-colors cursor-pointer block">
+              {editImage ? (
+                <>
+                  <img src={URL.createObjectURL(editImage)} alt="Preview" className="h-24 w-full object-cover rounded-lg mb-2" />
+                  <p className="text-xs text-muted-foreground">Clique para trocar</p>
+                </>
+              ) : boat?.imageUrl ? (
+                <>
+                  <img src={boat.imageUrl} alt={boat.name} className="h-24 w-full object-cover rounded-lg mb-2" />
+                  <p className="text-xs text-muted-foreground">Clique para trocar a foto</p>
+                </>
+              ) : (
+                <>
+                  <Camera className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Clique para adicionar foto</p>
+                  <p className="text-xs text-muted-foreground mt-1">JPG, PNG — opcional</p>
+                </>
+              )}
+            </label>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setEditImage(null); }}>Cancelar</Button>
+            <Button type="submit" disabled={actionLoading}>{actionLoading ? 'Salvando...' : 'Salvar'}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete Confirm Modal */}
+      <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Excluir Embarcação">
+        <div className="space-y-4 mt-2">
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja excluir <span className="font-semibold text-foreground">{boat?.name}</span>? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
+            <Button variant="outline" className="text-destructive hover:bg-red-50 hover:text-red-700 border-destructive/30" onClick={handleDelete} disabled={actionLoading}>
+              {actionLoading ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Member Modal */}
+      <Modal isOpen={showAddMemberModal} onClose={() => setShowAddMemberModal(false)} title="Adicionar Membro">
+        <form className="space-y-4 mt-2" onSubmit={handleAddMember}>
+          <Input name="userId" label="ID do Usuário (UUID)" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required />
+          <Select name="role" label="Perfil">
+            <option value="socio">Sócio</option>
+            <option value="admin">Administrador</option>
+            <option value="marinheiro">Marinheiro</option>
+          </Select>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowAddMemberModal(false)}>Cancelar</Button>
+            <Button type="submit" disabled={actionLoading}>{actionLoading ? 'Adicionando...' : 'Adicionar'}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -15,7 +15,7 @@ import {
   XCircle,
   Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -23,6 +23,7 @@ import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { maintenanceService } from '@/services';
 import type { Maintenance } from '@/types';
 
@@ -40,18 +41,45 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
   urgente: { label: 'Urgente', color: 'bg-red-50 text-red-700' },
 };
 
+const fallbackStatus = {
+  label: 'Sem status',
+  color: 'bg-gray-100 text-gray-700',
+  icon: AlertTriangle,
+};
+
+const fallbackPriority = {
+  label: 'Sem prioridade',
+  color: 'bg-gray-100 text-gray-700',
+};
+
+function formatDisplayLabel(value: string) {
+  const normalized = value.replace(/_/g, ' ').trim();
+  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : '';
+}
+
+function getStatusDisplay(status?: string) {
+  if (!status) return fallbackStatus;
+  return statusConfig[status] ?? { ...fallbackStatus, label: formatDisplayLabel(status) };
+}
+
+function getPriorityDisplay(priority?: string) {
+  if (!priority) return fallbackPriority;
+  return priorityConfig[priority] ?? { ...fallbackPriority, label: formatDisplayLabel(priority) };
+}
+
 export default function ManutencaoPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const { boats } = useBoats();
 
   const { data: paginatedData, loading, error, refetch } = useApi(
     () => maintenanceService.list(),
     [],
   );
 
-  const maintenances: Maintenance[] = paginatedData?.data ?? [];
+  const maintenances: Maintenance[] = paginatedData ?? [];
 
   const agendadas = maintenances.filter((m) => m.status === 'agendada').length;
   const emAndamento = maintenances.filter((m) => m.status === 'em_andamento').length;
@@ -78,6 +106,11 @@ export default function ManutencaoPage() {
       estimatedCost: Number(formData.get('estimatedCost')) || 0,
     });
     setIsModalOpen(false);
+    refetch();
+  };
+
+  const handleStart = async (maintenance: Maintenance) => {
+    await maintenanceService.update(maintenance.id, { ...maintenance, status: 'em_andamento' });
     refetch();
   };
 
@@ -156,16 +189,22 @@ export default function ManutencaoPage() {
       {/* Maintenance Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filtered.map((maintenance) => {
-          const status = statusConfig[maintenance.status];
-          const priority = priorityConfig[maintenance.priority];
+          const status = getStatusDisplay(maintenance.status);
+          const priority = getPriorityDisplay(maintenance.priority);
           const StatusIcon = status.icon;
+          const isPreventiva = maintenance.type === 'preventiva';
+          const isCorretiva = maintenance.type === 'corretiva';
+          const typeLabel = isPreventiva ? 'Preventiva' : isCorretiva ? 'Corretiva' : 'Não informado';
+          const typeBadgeVariant = isPreventiva ? 'default' : 'outline';
+          const typeIconBg = isPreventiva ? 'bg-blue-50' : isCorretiva ? 'bg-amber-50' : 'bg-gray-100';
+          const typeIconColor = isPreventiva ? 'text-blue-600' : isCorretiva ? 'text-amber-600' : 'text-gray-600';
           return (
             <Card key={maintenance.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-start gap-3">
-                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${maintenance.type === 'preventiva' ? 'bg-blue-50' : 'bg-amber-50'}`}>
-                      <Wrench className={`h-5 w-5 ${maintenance.type === 'preventiva' ? 'text-blue-600' : 'text-amber-600'}`} />
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${typeIconBg}`}>
+                      <Wrench className={`h-5 w-5 ${typeIconColor}`} />
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold">{maintenance.title}</h3>
@@ -181,8 +220,8 @@ export default function ManutencaoPage() {
                   <Badge variant="secondary">
                     <Ship className="h-3 w-3 mr-1" /> {maintenance.boatName}
                   </Badge>
-                  <Badge variant={maintenance.type === 'preventiva' ? 'default' : 'outline'}>
-                    {maintenance.type === 'preventiva' ? 'Preventiva' : 'Corretiva'}
+                  <Badge variant={typeBadgeVariant}>
+                    {typeLabel}
                   </Badge>
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priority.color}`}>
                     {priority.label}
@@ -221,7 +260,7 @@ export default function ManutencaoPage() {
 
                 {(maintenance.status === 'agendada' || maintenance.status === 'em_andamento') && (
                   <div className="flex gap-2 mt-4">
-                    {maintenance.status === 'agendada' && <Button variant="outline" size="sm" className="flex-1">Iniciar</Button>}
+                    {maintenance.status === 'agendada' && <Button variant="outline" size="sm" className="flex-1" onClick={() => handleStart(maintenance)}>Iniciar</Button>}
                     {maintenance.status === 'em_andamento' && <Button size="sm" className="flex-1" onClick={() => handleComplete(maintenance.id)}>Concluir</Button>}
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(maintenance.id)}>Cancelar</Button>
                   </div>
@@ -251,8 +290,8 @@ export default function ManutencaoPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select name="boatId" label="Embarcação">
-              <option value="1">Mar Azul</option>
-              <option value="2">Veleiro Sol</option>
+              <option value="">Selecione...</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
             <Input name="scheduledDate" label="Data Agendada" type="date" required />
           </div>

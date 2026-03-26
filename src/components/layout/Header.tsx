@@ -30,6 +30,7 @@ import {
   Receipt,
   ArrowDownUp,
   History,
+  CreditCard,
   Navigation,
   Fuel,
   CalendarDays,
@@ -61,6 +62,7 @@ const mobileNavGroups: NavGroup[] = [
       { label: 'Despesas', href: '/financeiro/despesas', icon: Receipt },
       { label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa', icon: ArrowDownUp },
       { label: 'Histórico', href: '/financeiro/historico', icon: History },
+      { label: 'Assinaturas', href: '/assinaturas', icon: CreditCard },
     ],
   },
   {
@@ -98,10 +100,10 @@ export function Header() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { user } = useUser();
-  const { data: notifications, refetch: refetchNotifications } = useApi<Notification[]>(() => notificationService.list());
+  const { data: notifications } = useApi<Notification[]>(() => notificationService.list());
   const { unreadCount: realtimeUnreadCount } = useRealtimeNotifications({ userId: user?.id });
 
-  const unreadCount = realtimeUnreadCount || notifications?.filter((n) => !n.isRead).length || 0;
+  const unreadCount = realtimeUnreadCount || notifications?.filter((notification) => !notification.isRead).length || 0;
   const recentNotifications = notifications?.slice(0, 5) || [];
 
   const toggleTheme = () => {
@@ -116,7 +118,6 @@ export function Header() {
     }, 200);
   }, []);
 
-  // Close sidebar on route change
   useEffect(() => {
     if (mobileMenuOpen) closeMobileMenu();
     setUserMenuOpen(false);
@@ -124,28 +125,30 @@ export function Header() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // Close user menu on outside click
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+    function handleClick(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setUserMenuOpen(false);
       }
-      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setNotificationsOpen(false);
       }
     }
-    if (userMenuOpen || notificationsOpen) document.addEventListener('mousedown', handleClick);
+
+    if (userMenuOpen || notificationsOpen) {
+      document.addEventListener('mousedown', handleClick);
+    }
+
     return () => document.removeEventListener('mousedown', handleClick);
   }, [userMenuOpen, notificationsOpen]);
 
   const currentPage = allNavItems.find(
-    (item) => pathname === item.href || pathname.startsWith(item.href + '/')
+    (item) => pathname === item.href || pathname.startsWith(item.href + '/'),
   );
 
   return (
     <>
       <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-card/70 backdrop-blur-lg px-4 lg:px-6 transition-colors duration-300">
-        {/* Mobile menu button */}
         <button
           className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer"
           onClick={() => setMobileMenuOpen(true)}
@@ -153,12 +156,10 @@ export function Header() {
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Page title */}
         <div className="flex-1">
           <h2 className="text-lg font-semibold">{currentPage?.label || 'Nautify'}</h2>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
           <button className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer">
             <Search className="h-5 w-5" />
@@ -173,7 +174,7 @@ export function Header() {
           <div className="relative" ref={notificationsRef}>
             <button
               onClick={() => {
-                setNotificationsOpen((v) => !v);
+                setNotificationsOpen((value) => !value);
                 setUserMenuOpen(false);
               }}
               className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative cursor-pointer"
@@ -194,38 +195,45 @@ export function Header() {
                     </span>
                   )}
                 </div>
-                
+
                 <div className="max-h-[300px] overflow-y-auto w-full custom-scrollbar">
                   {recentNotifications.length > 0 ? (
                     <div className="flex flex-col">
-                      {recentNotifications.map((notif) => (
+                      {recentNotifications.map((notification) => (
                         <Link
-                          key={notif.id}
+                          key={notification.id}
                           href="/notificacoes"
                           onClick={() => setNotificationsOpen(false)}
                           className={cn(
-                            "flex flex-col gap-1 px-4 py-3 hover:bg-accent transition-colors cursor-pointer border-b border-border/50 last:border-0",
-                            !notif.isRead ? "bg-nautify-50/10" : ""
+                            'flex flex-col gap-1 px-4 py-3 hover:bg-accent transition-colors cursor-pointer border-b border-border/50 last:border-0',
+                            !notification.isRead && 'bg-nautify-50/10',
                           )}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <span className={cn("text-sm font-medium line-clamp-1 flex-1", !notif.isRead ? "text-foreground" : "text-muted-foreground")}>
-                              {notif.title}
+                            <span
+                              className={cn(
+                                'text-sm font-medium line-clamp-1 flex-1',
+                                !notification.isRead ? 'text-foreground' : 'text-muted-foreground',
+                              )}
+                            >
+                              {notification.title}
                             </span>
-                            {!notif.isRead && <span className="w-1.5 h-1.5 rounded-full bg-nautify-500 shrink-0 mt-1.5" />}
+                            {!notification.isRead && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-nautify-500 shrink-0 mt-1.5" />
+                            )}
                           </div>
                           <span className="text-xs text-muted-foreground line-clamp-2">
-                            {notif.message}
+                            {notification.message}
                           </span>
                         </Link>
                       ))}
                     </div>
                   ) : (
-                    <EmptyState 
-                      size="sm" 
-                      icon={BellOff} 
-                      title="Nenhuma notificação" 
-                      description="Você está em dia com tudo!" 
+                    <EmptyState
+                      size="sm"
+                      icon={BellOff}
+                      title="Nenhuma notificação"
+                      description="Você está em dia com tudo!"
                     />
                   )}
                 </div>
@@ -246,7 +254,7 @@ export function Header() {
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => {
-                setUserMenuOpen((v) => !v);
+                setUserMenuOpen((value) => !value);
                 setNotificationsOpen(false);
               }}
               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors cursor-pointer"
@@ -255,17 +263,20 @@ export function Header() {
                 <User className="h-4 w-4 text-nautify-700" />
               </div>
               <span className="hidden sm:block text-sm font-medium">{user?.name?.split(' ')[0] || '...'}</span>
-              <ChevronDown className={cn('hidden sm:block h-3.5 w-3.5 text-muted-foreground transition-transform duration-200', userMenuOpen && 'rotate-180')} />
+              <ChevronDown
+                className={cn(
+                  'hidden sm:block h-3.5 w-3.5 text-muted-foreground transition-transform duration-200',
+                  userMenuOpen && 'rotate-180',
+                )}
+              />
             </button>
 
             {userMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-border bg-card shadow-xl animate-dropdown-in origin-top-right z-50">
-                {/* User info */}
                 <div className="px-4 py-3 border-b border-border">
                   <p className="text-sm font-semibold text-foreground">{user?.name || '...'}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.email || '...'}</p>
                 </div>
-                {/* Menu items */}
                 <div className="py-1.5">
                   <Link
                     href="/configuracoes"
@@ -300,7 +311,6 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile drawer */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
@@ -310,18 +320,12 @@ export function Header() {
           <div
             className={cn(
               'fixed left-0 top-0 h-full w-72 bg-sidebar-bg text-sidebar-foreground shadow-xl flex flex-col',
-              isClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'
+              isClosing ? 'animate-slide-out-left' : 'animate-slide-in-left',
             )}
           >
-            {/* Logo */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <Image
-                  src="/logo-white.png"
-                  alt="Nautify"
-                  width={36}
-                  height={36}
-                />
+                <Image src="/logo-white.png" alt="Nautify" width={36} height={36} />
                 <h1 className="text-lg font-bold text-white">Nautify</h1>
               </div>
               <button
@@ -332,7 +336,6 @@ export function Header() {
               </button>
             </div>
 
-            {/* Mobile Nav - Grouped */}
             <nav className="px-3 py-4 space-y-4 flex-1 overflow-y-auto">
               {mobileNavGroups.map((group) => (
                 <div key={group.section}>
@@ -351,7 +354,7 @@ export function Header() {
                             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                             isActive
                               ? 'bg-nautify-700/50 text-white'
-                              : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white'
+                              : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white',
                           )}
                         >
                           <item.icon className={cn('h-4.5 w-4.5', isActive ? 'text-nautify-400' : '')} />

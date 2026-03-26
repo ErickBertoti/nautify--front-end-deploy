@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { calendarService } from '@/services';
 import type { CalendarEvent } from '@/types';
 
@@ -51,7 +52,8 @@ function getCalendarDays(year: number, month: number) {
 
 export default function AgendaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(2); // March (0-indexed)
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const { boats } = useBoats();
   const [currentYear] = useState(2026);
   const [filterType, setFilterType] = useState('');
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
@@ -263,6 +265,14 @@ export default function AgendaPage() {
                     <div className="flex items-center gap-2 ml-[52px] sm:ml-0 shrink-0">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config?.bgColor}`}>{config?.label}</span>
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status?.color}`}>{status?.label}</span>
+                      {event.status === 'confirmado' && (
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-amber-600 text-xs px-2" onClick={() => handleCancelEvent(event.id)}>
+                          Cancelar
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 text-xs px-2" onClick={() => handleDeleteEvent(event.id)}>
+                        Excluir
+                      </Button>
                     </div>
                   </div>
                 );
@@ -286,8 +296,7 @@ export default function AgendaPage() {
             </Select>
             <Select name="boatId" label="Embarcação">
               <option value="">Nenhuma</option>
-              <option value="1">Mar Azul</option>
-              <option value="2">Veleiro Sol</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

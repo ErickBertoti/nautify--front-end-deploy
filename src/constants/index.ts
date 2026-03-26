@@ -1,3 +1,5 @@
+import type { SubscriptionStatus } from '@/types';
+
 export const APP_NAME = 'Nautify';
 export const APP_DESCRIPTION = 'Sistema de Gestão de Sociedades Náuticas';
 
@@ -55,6 +57,32 @@ export const BOAT_TYPE_LABELS: Record<string, string> = {
   jet: 'Jet Ski',
   veleiro: 'Veleiro',
   outro: 'Outro',
+};
+
+export const SUBSCRIPTION_STATUS_META: Record<
+  SubscriptionStatus,
+  { label: string; className: string; cancelable: boolean }
+> = {
+  active: {
+    label: 'Ativa',
+    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+    cancelable: true,
+  },
+  pending: {
+    label: 'Pendente',
+    className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+    cancelable: true,
+  },
+  overdue: {
+    label: 'Atrasada',
+    className: 'bg-red-500/15 text-red-400 border-red-500/30',
+    cancelable: true,
+  },
+  canceled: {
+    label: 'Cancelada',
+    className: 'bg-muted text-muted-foreground border-border',
+    cancelable: false,
+  },
 };
 
 export const MAINTENANCE_TYPE_LABELS: Record<string, string> = {
