@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -19,20 +19,127 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { StatCard } from '@/components/shared/StatCard';
 import { useToast } from '@/components/ui/Toast';
 import { SUBSCRIPTION_STATUS_META } from '@/constants';
-import { useApi } from '@/hooks/useApi';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { subscriptionService } from '@/services';
 import type { Subscription } from '@/types';
 
+const PAYMENT_POLL_INTERVAL_MS = 3000;
+const PAYMENT_POLL_TIMEOUT_MS = 30000;
+
 export default function AssinaturasPage() {
   const router = useRouter();
   const toast = useToast();
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [subscriptionToCancel, setSubscriptionToCancel] = useState<Subscription | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
-  const { data: subscriptions, loading, error, refetch } = useApi<Subscription[]>(
-    () => subscriptionService.list(),
-    [],
-  );
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const handledReturnRef = useRef<string | null>(null);
+  const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingDeadlineRef = useRef(0);
+
+  const clearPaymentPolling = useCallback(() => {
+    if (pollingTimerRef.current) {
+      clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+    pollingDeadlineRef.current = 0;
+  }, []);
+
+  const loadSubscriptions = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (silent) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
+
+    try {
+      const res = await subscriptionService.list();
+      const nextSubscriptions = res.data ?? [];
+      setSubscriptions(nextSubscriptions);
+      return nextSubscriptions;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao carregar dados';
+      if (!silent) {
+        setError(message);
+      }
+      return null;
+    } finally {
+      if (silent) {
+        setIsRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  const pollPaymentStatus = useCallback(async (subscriptionId: string) => {
+    if (Date.now() >= pollingDeadlineRef.current) {
+      toast.info('Pagamento recebido. A assinatura ainda esta sendo processada.');
+      clearPaymentPolling();
+      return;
+    }
+
+    const latestSubscriptions = await loadSubscriptions({ silent: true });
+    const currentSubscription = latestSubscriptions?.find((subscription) => subscription.id === subscriptionId);
+
+    if (currentSubscription?.status === 'active') {
+      toast.success('Pagamento confirmado e assinatura ativada.');
+      clearPaymentPolling();
+      return;
+    }
+
+    pollingTimerRef.current = setTimeout(() => {
+      void pollPaymentStatus(subscriptionId);
+    }, PAYMENT_POLL_INTERVAL_MS);
+  }, [clearPaymentPolling, loadSubscriptions, toast]);
+
+  useEffect(() => {
+    void loadSubscriptions();
+  }, [loadSubscriptions]);
+
+  useEffect(() => () => {
+    clearPaymentPolling();
+  }, [clearPaymentPolling]);
+
+  useEffect(() => {
+    const paymentStatus = new URLSearchParams(window.location.search).get('payment');
+    const returnSubscriptionId = new URLSearchParams(window.location.search).get('subscriptionId');
+
+    if (paymentStatus !== 'success' || !returnSubscriptionId) {
+      return;
+    }
+
+    const handledKey = `${paymentStatus}:${returnSubscriptionId}`;
+    if (handledReturnRef.current === handledKey) {
+      return;
+    }
+
+    handledReturnRef.current = handledKey;
+    clearPaymentPolling();
+    pollingDeadlineRef.current = Date.now() + PAYMENT_POLL_TIMEOUT_MS;
+
+    toast.info('Pagamento recebido. Atualizando o status da assinatura...');
+    router.replace('/assinaturas');
+
+    void (async () => {
+      const latestSubscriptions = await loadSubscriptions({ silent: true });
+      const currentSubscription = latestSubscriptions?.find((subscription) => subscription.id === returnSubscriptionId);
+
+      if (currentSubscription?.status === 'active') {
+        toast.success('Pagamento confirmado e assinatura ativada.');
+        clearPaymentPolling();
+        return;
+      }
+
+      pollingTimerRef.current = setTimeout(() => {
+        void pollPaymentStatus(returnSubscriptionId);
+      }, PAYMENT_POLL_INTERVAL_MS);
+    })();
+  }, [clearPaymentPolling, loadSubscriptions, pollPaymentStatus, router, toast]);
 
   const subscriptionList = subscriptions ?? [];
   const activeCount = subscriptionList.filter((subscription) => subscription.status === 'active').length;
@@ -44,6 +151,30 @@ export default function AssinaturasPage() {
     .filter((subscription) => subscription.status === 'active')
     .reduce((sum, subscription) => sum + subscription.value, 0);
 
+  async function handlePay(id: string) {
+    setPayingId(id);
+    try {
+      const res = await subscriptionService.getPaymentLink(id);
+      const { invoiceUrl, status } = res.data;
+
+      if (invoiceUrl) {
+        window.location.assign(invoiceUrl);
+        return;
+      }
+
+      if (status === 'no_pending_payment') {
+        toast.success('Nenhum pagamento pendente para esta assinatura.');
+        return;
+      }
+
+      toast.error('Link de pagamento nao disponivel.');
+    } catch {
+      toast.error('Erro ao buscar link de pagamento.');
+    } finally {
+      setPayingId(null);
+    }
+  }
+
   async function handleCancelSubscription() {
     if (!subscriptionToCancel) return;
 
@@ -52,7 +183,7 @@ export default function AssinaturasPage() {
       await subscriptionService.cancel(subscriptionToCancel.id);
       toast.success('Assinatura cancelada com sucesso!');
       setSubscriptionToCancel(null);
-      refetch();
+      await loadSubscriptions({ silent: true });
     } catch {
       toast.error('Erro ao cancelar assinatura.');
     } finally {
@@ -73,7 +204,7 @@ export default function AssinaturasPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-8 w-8 text-destructive" />
         <p className="text-destructive">{error}</p>
-        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+        <Button variant="outline" onClick={() => void loadSubscriptions()}>Tentar novamente</Button>
       </div>
     );
   }
@@ -83,11 +214,17 @@ export default function AssinaturasPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Assinaturas</h1>
-          <p className="text-muted-foreground">Acompanhe o status de cobrança das suas embarcações.</p>
+          <p className="text-muted-foreground">Acompanhe o status de cobranca das suas embarcacoes.</p>
+          {isRefreshing && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Atualizando status da assinatura...
+            </div>
+          )}
         </div>
         <Button variant="outline" onClick={() => router.push('/embarcacoes')}>
           <Ship className="h-4 w-4" />
-          Ver embarcações
+          Ver embarcacoes
         </Button>
       </div>
 
@@ -97,8 +234,8 @@ export default function AssinaturasPage() {
             <EmptyState
               icon={CreditCard}
               title="Nenhuma assinatura encontrada"
-              description="As assinaturas aparecem aqui assim que uma embarcação for criada para você."
-              actionLabel="Criar embarcação"
+              description="As assinaturas aparecem aqui assim que uma embarcacao for criada para voce."
+              actionLabel="Criar embarcacao"
               onAction={() => router.push('/embarcacoes')}
             />
           </CardContent>
@@ -109,13 +246,13 @@ export default function AssinaturasPage() {
             <StatCard
               title="Assinaturas ativas"
               value={String(activeCount)}
-              subtitle="em cobrança normal"
+              subtitle="em cobranca normal"
               icon={Wallet}
               iconBgColor="bg-emerald-50"
               iconColor="text-emerald-600"
             />
             <StatCard
-              title="Exigem atenção"
+              title="Exigem atencao"
               value={String(attentionCount)}
               subtitle="pendentes ou atrasadas"
               icon={AlertCircle}
@@ -125,7 +262,7 @@ export default function AssinaturasPage() {
             <StatCard
               title="Canceladas"
               value={String(canceledCount)}
-              subtitle="mantidas no histórico"
+              subtitle="mantidas no historico"
               icon={Ban}
               iconBgColor="bg-slate-100"
               iconColor="text-slate-600"
@@ -144,7 +281,7 @@ export default function AssinaturasPage() {
             {subscriptionList.map((subscription) => {
               const status = SUBSCRIPTION_STATUS_META[subscription.status];
               const planName = subscription.plan?.name || 'Plano Nautify';
-              const boatName = subscription.boatName || `Embarcação ${subscription.boatId.slice(0, 8)}`;
+              const boatName = subscription.boatName || `Embarcacao ${subscription.boatId.slice(0, 8)}`;
               const isCanceling = cancelingId === subscription.id;
 
               return (
@@ -167,13 +304,13 @@ export default function AssinaturasPage() {
                         <p className="mt-2 text-lg font-bold text-foreground">{formatCurrency(subscription.value)}</p>
                       </div>
                       <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Próximo vencimento</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proximo vencimento</p>
                         <p className="mt-2 text-lg font-bold text-foreground">
-                          {subscription.nextDueDate ? formatDate(subscription.nextDueDate) : '—'}
+                          {subscription.nextDueDate ? formatDate(subscription.nextDueDate) : '-'}
                         </p>
                       </div>
                       <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobrança</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobranca</p>
                         <p className="mt-2 text-lg font-bold text-foreground">{subscription.billingType}</p>
                       </div>
                     </div>
@@ -186,14 +323,26 @@ export default function AssinaturasPage() {
                         </span>
                       </div>
 
-                      <Button
-                        variant={status.cancelable ? 'destructive' : 'outline'}
-                        onClick={() => setSubscriptionToCancel(subscription)}
-                        disabled={!status.cancelable || isCanceling}
-                        isLoading={isCanceling}
-                      >
-                        {status.cancelable ? 'Cancelar assinatura' : 'Assinatura cancelada'}
-                      </Button>
+                      <div className="flex gap-2">
+                        {(subscription.status === 'pending' || subscription.status === 'overdue') && (
+                          <Button
+                            onClick={() => handlePay(subscription.id)}
+                            disabled={payingId === subscription.id}
+                            isLoading={payingId === subscription.id}
+                          >
+                            <CreditCard className="h-4 w-4 mr-1" />
+                            Pagar
+                          </Button>
+                        )}
+                        <Button
+                          variant={status.cancelable ? 'destructive' : 'outline'}
+                          onClick={() => setSubscriptionToCancel(subscription)}
+                          disabled={!status.cancelable || isCanceling}
+                          isLoading={isCanceling}
+                        >
+                          {status.cancelable ? 'Cancelar assinatura' : 'Assinatura cancelada'}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -209,13 +358,13 @@ export default function AssinaturasPage() {
         title="Cancelar assinatura"
         description={
           subscriptionToCancel
-            ? `Você está prestes a cancelar a assinatura de ${subscriptionToCancel.boatName || 'esta embarcação'}.`
+            ? `Voce esta prestes a cancelar a assinatura de ${subscriptionToCancel.boatName || 'esta embarcacao'}.`
             : undefined
         }
       >
         <div className="space-y-4">
           <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
-            O cancelamento mantém a assinatura no histórico, mas encerra novas cobranças para essa embarcação.
+            O cancelamento mantem a assinatura no historico, mas encerra novas cobrancas para essa embarcacao.
           </div>
           <div className="flex justify-end gap-3">
             <Button

@@ -429,6 +429,8 @@ export const subscriptionService = {
   getById: (id: string) => api.get<ApiResponse<Subscription>>(`/subscriptions/${id}`),
 
   cancel: (id: string) => api.post<ApiResponse<void>>(`/subscriptions/${id}/cancel`, {}),
+
+  getPaymentLink: (id: string) => api.get<ApiResponse<{ invoiceUrl: string; bankSlipUrl: string; status: string; dueDate: string }>>(`/subscriptions/${id}/payment-link`),
 };
 
 // ============================================
