@@ -206,11 +206,8 @@ export default function ConfiguracoesPage() {
     }
 
     if (activeTab === 'seguranca') {
-      if (!passwords.current) e.current = 'Senha atual é obrigatória';
-      const strength = getPasswordStrength(passwords.newPassword);
-      if (!passwords.newPassword) e.newPassword = 'Nova senha é obrigatória';
-      else if (strength.score < 3) e.newPassword = 'Senha muito fraca — atenda pelo menos 3 requisitos';
-      if (passwords.newPassword !== passwords.confirm) e.confirm = 'As senhas não coincidem';
+      toast.error('Funcionalidade em breve');
+      return;
     }
 
     setErrors(e);
@@ -239,9 +236,6 @@ export default function ConfiguracoesPage() {
         refetch();
       }
       toast.success('Alterações salvas com sucesso!');
-      if (activeTab === 'seguranca') {
-        setPasswords({ current: '', newPassword: '', confirm: '' });
-      }
     } catch {
       toast.error('Erro ao salvar alterações');
     } finally {

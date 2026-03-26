@@ -22,6 +22,7 @@ import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { formatCurrency } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { reportService } from '@/services';
 import type { ReportData } from '@/types';
 
@@ -77,6 +78,8 @@ export default function RelatoriosPage() {
   const [endDate, setEndDate] = useState('2026-03-31');
   const [boatId, setBoatId] = useState('');
   const [previewData, setPreviewData] = useState<ReportData | null>(null);
+
+  const { boats } = useBoats();
 
   const { data: reportHistory, loading, error, refetch } = useApi<ReportData[]>(
     () => reportService.list(),
@@ -191,7 +194,8 @@ export default function RelatoriosPage() {
               <Input label="Data Início" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               <Input label="Data Fim" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               <Select label="Embarcação" value={boatId} onChange={(e) => setBoatId(e.target.value)}>
-                <option value="">Todas</option>
+                <option value="">Todas as embarcações</option>
+                {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </Select>
             </div>
             <div className="flex flex-wrap gap-3 pt-2">
@@ -271,7 +275,7 @@ export default function RelatoriosPage() {
       )}
 
       {/* Report History */}
-      <Card>
+      {reportHistory.length > 0 && <Card>
         <CardHeader>
           <CardTitle className="text-base">Relatórios Gerados</CardTitle>
         </CardHeader>
@@ -317,7 +321,7 @@ export default function RelatoriosPage() {
             </table>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

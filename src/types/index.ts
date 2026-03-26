@@ -141,7 +141,7 @@ export interface CashFlowSummary {
 }
 
 // --- Saídas ---
-export type TripStatus = 'em_andamento' | 'finalizada' | 'com_ocorrencia';
+export type TripStatus = 'agendada' | 'em_andamento' | 'finalizada' | 'com_ocorrencia';
 export type TripType = 'uso' | 'teste';
 
 export interface Trip {
@@ -408,6 +408,7 @@ export interface Plan {
 export interface Subscription {
   id: string;
   boatId: string;
+  boatName?: string;
   ownerUserId: string;
   asaasCustomerId?: string;
   asaasSubscriptionId?: string;

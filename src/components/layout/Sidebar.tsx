@@ -8,14 +8,13 @@ import Image from 'next/image';
 import {
   LayoutDashboard,
   Ship,
-  DollarSign,
   TrendingUp,
   Receipt,
   ArrowDownUp,
   History,
+  CreditCard,
   Navigation,
   Fuel,
-  BarChart3,
   CalendarDays,
   Wrench,
   Users,
@@ -54,6 +53,7 @@ const navGroups: NavGroup[] = [
       { label: 'Despesas', href: '/financeiro/despesas', icon: Receipt },
       { label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa', icon: ArrowDownUp },
       { label: 'Histórico', href: '/financeiro/historico', icon: History },
+      { label: 'Assinaturas', href: '/assinaturas', icon: CreditCard },
     ],
   },
   {
@@ -81,7 +81,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export const allNavItems = navGroups.flatMap((g) => g.items);
+export const allNavItems = navGroups.flatMap((group) => group.items);
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -92,27 +92,21 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden lg:flex h-screen w-64 flex-col bg-sidebar-bg/95 backdrop-blur-md border-r border-white/5 text-sidebar-foreground transition-all duration-300">
-      {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-        <Image
-          src="/logo-white.png"
-          alt="Nautify"
-          width={36}
-          height={36}
-        />
+        <Image src="/logo-white.png" alt="Nautify" width={36} height={36} />
         <div>
           <h1 className="text-lg font-bold tracking-tight text-white">Nautify</h1>
           <p className="text-[10px] text-sidebar-muted tracking-widest uppercase">Gestão Náutica</p>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto scrollbar-thin">
         {navGroups.map((group) => {
           const isCollapsed = collapsed[group.section];
           const hasActive = group.items.some(
-            (i) => pathname === i.href || pathname.startsWith(i.href + '/')
+            (item) => pathname === item.href || pathname.startsWith(item.href + '/'),
           );
+
           return (
             <div key={group.section}>
               <button
@@ -122,7 +116,7 @@ export function Sidebar() {
                 <span
                   className={cn(
                     'text-[10px] font-semibold uppercase tracking-wider transition-colors',
-                    hasActive ? 'text-nautify-400' : 'text-sidebar-muted group-hover:text-sidebar-foreground/70'
+                    hasActive ? 'text-nautify-400' : 'text-sidebar-muted group-hover:text-sidebar-foreground/70',
                   )}
                 >
                   {group.section}
@@ -130,7 +124,7 @@ export function Sidebar() {
                 <ChevronDown
                   className={cn(
                     'h-3 w-3 text-sidebar-muted transition-transform',
-                    isCollapsed && '-rotate-90'
+                    isCollapsed && '-rotate-90',
                   )}
                 />
               </button>
@@ -146,7 +140,7 @@ export function Sidebar() {
                           'relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isActive
                             ? 'bg-nautify-700/50 text-white'
-                            : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white'
+                            : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white',
                         )}
                       >
                         {isActive && (
@@ -165,7 +159,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom */}
       <div className="px-3 py-4 border-t border-white/10 space-y-1">
         <Link
           href="/configuracoes"
@@ -173,7 +166,7 @@ export function Sidebar() {
             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
             pathname === '/configuracoes'
               ? 'bg-nautify-700/50 text-white'
-              : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white'
+              : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white',
           )}
         >
           <Settings className="h-5 w-5" />

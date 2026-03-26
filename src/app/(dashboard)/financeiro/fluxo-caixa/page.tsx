@@ -21,17 +21,43 @@ import { useApi } from '@/hooks/useApi';
 import { cashFlowService } from '@/services';
 import type { CashFlowSummary, CashFlowEntry } from '@/types';
 
+function getPeriodDates(period: string): { startDate: string; endDate: string; label: string } {
+  const [y, m] = [parseInt(period.slice(-4)), parseInt(period.slice(0, -4)) - 1];
+  const start = new Date(y, m, 1);
+  const end = new Date(y, m + 1, 0);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const label = start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return { startDate: fmt(start), endDate: fmt(end), label: label.charAt(0).toUpperCase() + label.slice(1) };
+}
+
+function getLastSixMonths(): { value: string; label: string }[] {
+  const now = new Date();
+  const months = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${String(d.getMonth() + 1).padStart(2, '0')}${d.getFullYear()}`;
+    const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    months.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) });
+  }
+  return months;
+}
+
 export default function FluxoCaixaPage() {
-  const [period, setPeriod] = useState('mar2026');
+  const now = new Date();
+  const defaultPeriod = `${String(now.getMonth() + 1).padStart(2, '0')}${now.getFullYear()}`;
+  const [period, setPeriod] = useState(defaultPeriod);
+
+  const { startDate, endDate } = getPeriodDates(period);
+  const monthOptions = getLastSixMonths();
 
   const { data: summary, loading: loadingSummary, error: errorSummary, refetch: refetchSummary } = useApi<CashFlowSummary>(
-    () => cashFlowService.getSummary(),
-    [],
+    () => cashFlowService.getSummary({ startDate, endDate }),
+    [period],
   );
 
   const { data: entries, loading: loadingEntries, error: errorEntries, refetch: refetchEntries } = useApi<CashFlowEntry[]>(
-    () => cashFlowService.listEntries(),
-    [],
+    () => cashFlowService.listEntries({ startDate, endDate }),
+    [period],
   );
 
   const loading = loadingSummary || loadingEntries;
@@ -77,9 +103,9 @@ export default function FluxoCaixaPage() {
           <p className="text-muted-foreground">Visão geral de entradas e saídas ao longo do tempo</p>
         </div>
         <Select value={period} onChange={(e) => setPeriod(e.target.value)} className="w-auto">
-          <option value="mar2026">Março 2026</option>
-          <option value="fev2026">Fevereiro 2026</option>
-          <option value="jan2026">Janeiro 2026</option>
+          {monthOptions.map((m) => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
         </Select>
       </div>
 

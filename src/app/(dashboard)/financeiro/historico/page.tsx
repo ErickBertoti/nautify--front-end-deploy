@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   History,
   Search,
-  Download,
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
@@ -90,9 +89,6 @@ export default function HistoricoPage() {
           <h1 className="text-2xl font-bold">Histórico Financeiro</h1>
           <p className="text-muted-foreground">Registro completo de todas as movimentações</p>
         </div>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" /> Exportar
-        </Button>
       </div>
 
       {/* Monthly Summary */}

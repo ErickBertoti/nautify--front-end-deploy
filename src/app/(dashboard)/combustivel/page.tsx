@@ -21,12 +21,14 @@ import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { fuelingService } from '@/services';
 import type { Fueling, FuelConsumptionSummary } from '@/types';
 
 export default function CombustivelPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterBoat, setFilterBoat] = useState('');
+  const { boats } = useBoats();
 
   const { data: fuelings, loading: loadingFuelings, error: errorFuelings, refetch: refetchFuelings } = useApi<Fueling[]>(
     () => fuelingService.list(),
@@ -239,8 +241,8 @@ export default function CombustivelPage() {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Abastecimento">
         <form className="space-y-4" onSubmit={handleCreate}>
           <Select label="Embarcação" name="boatId">
-            <option value="1">Mar Azul</option>
-            <option value="2">Veleiro Sol</option>
+            <option value="">Selecione...</option>
+            {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </Select>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Litros" name="liters" type="number" placeholder="0" required />

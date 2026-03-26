@@ -19,6 +19,7 @@ import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
 import { expenseService } from '@/services';
 import type { Expense } from '@/types';
 
@@ -45,6 +46,7 @@ export default function DespesasPage() {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const { boats } = useBoats();
 
   const { data: expenses, loading, error, refetch } = useApi<Expense[]>(
     () => expenseService.list(),
@@ -238,8 +240,8 @@ export default function DespesasPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select name="boatId" label="Embarcação">
-              <option value="1">Mar Azul</option>
-              <option value="2">Veleiro Sol</option>
+              <option value="">Selecione...</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
             <Input name="dueDate" label="Data de Vencimento" type="date" />
           </div>

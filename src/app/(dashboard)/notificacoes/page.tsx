@@ -12,7 +12,6 @@ import {
   FileText,
   Ship,
   Info,
-  Trash2,
   Clock,
   Filter,
   Loader2,
@@ -183,9 +182,6 @@ export default function NotificacoesPage() {
                         <CheckCheck className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" title="Remover">
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
                   </div>
                 </div>
               </CardContent>

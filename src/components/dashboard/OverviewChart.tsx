@@ -56,7 +56,7 @@ export function OverviewChart({ data }: OverviewChartProps) {
             <CardContent className="flex-1 pb-0 px-1 sm:px-6">
                 <div className="h-[280px] w-full mt-4">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                             <defs>
                                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="var(--emerald-500, #10b981)" stopOpacity={0.3} />
@@ -72,14 +72,16 @@ export function OverviewChart({ data }: OverviewChartProps) {
                                 dataKey="month"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 500 }}
+                                tick={{ fill: 'currentColor', fontSize: 12, fontWeight: 500 }}
                                 dy={10}
+                                className="text-muted-foreground"
                             />
                             <YAxis
                                 axisLine={false}
                                 tickLine={false}
                                 tickFormatter={(value) => `R$${value / 1000}k`}
-                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                tick={{ fill: 'currentColor', fontSize: 12 }}
+                                className="text-muted-foreground"
                             />
                             <Tooltip
                                 cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}

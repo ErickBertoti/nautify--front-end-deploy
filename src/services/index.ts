@@ -173,9 +173,11 @@ export const cashFlowService = {
     return api.get<ApiResponse<CashFlowSummary>>(`/cashflow/summary?${query.toString()}`);
   },
 
-  listEntries: (params?: { boatId?: string; page?: number; limit?: number }) => {
+  listEntries: (params?: { boatId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.startDate) query.set('start_date', params.startDate);
+    if (params?.endDate) query.set('end_date', params.endDate);
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
     return api.get<PaginatedResponse<CashFlowEntry>>(`/cashflow/entries?${query.toString()}`);
@@ -198,6 +200,8 @@ export const tripService = {
   getById: (id: string) => api.get<ApiResponse<Trip>>(`/trips/${id}`),
 
   create: (data: Partial<Trip>) => api.post<ApiResponse<Trip>>('/trips', data),
+
+  start: (id: string) => api.patch<ApiResponse<Trip>>(`/trips/${id}/start`, {}),
 
   finish: (id: string, observations?: string) =>
     api.patch<ApiResponse<Trip>>(`/trips/${id}/finish`, { observations }),
@@ -337,8 +341,18 @@ export const partnerService = {
     return api.get<PaginatedResponse<PartnerContribution>>(`/partners/${partnerId}/contributions?${query.toString()}`);
   },
 
+  listAllContributions: (params?: { page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api.get<PaginatedResponse<PartnerContribution>>(`/contributions?${query.toString()}`);
+  },
+
   payContribution: (contributionId: string) =>
     api.patch<ApiResponse<PartnerContribution>>(`/contributions/${contributionId}/pay`, {}),
+
+  generateContributions: () =>
+    api.post<ApiResponse<{ month: string; generated: number }>>('/contributions/generate', {}),
 };
 
 // ============================================
