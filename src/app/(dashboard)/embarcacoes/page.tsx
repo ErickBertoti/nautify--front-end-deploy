@@ -10,8 +10,10 @@ import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { useToast } from '@/components/ui/Toast';
 import { BOAT_TYPE_LABELS, SUBSCRIPTION_STATUS_META } from '@/constants';
 import { useApi } from '@/hooks/useApi';
+import { getErrorMessage } from '@/lib/errors';
 import { boatService } from '@/services';
 import type { Boat } from '@/types';
 
@@ -20,6 +22,7 @@ export default function EmbarcacoesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [boatImage, setBoatImage] = useState<File | null>(null);
+  const toast = useToast();
   const { data: boats, loading, error, refetch } = useApi<Boat[]>(() => boatService.list());
 
   const handleCreateBoat = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -44,8 +47,9 @@ export default function EmbarcacoesPage() {
       setShowAddModal(false);
       setBoatImage(null);
       refetch();
+      toast.success('Embarcação criada com sucesso!');
     } catch (err) {
-      console.error('Erro ao criar embarcação:', err);
+      toast.error(getErrorMessage(err, 'Erro ao criar embarcação.'));
     } finally {
       setSubmitting(false);
     }

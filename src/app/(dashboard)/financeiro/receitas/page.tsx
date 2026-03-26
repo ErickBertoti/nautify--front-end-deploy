@@ -2,23 +2,21 @@
 
 import React, { useState } from 'react';
 import {
-  TrendingUp,
   Plus,
   Search,
-  Filter,
   DollarSign,
-  Calendar,
   CheckCircle,
   Clock,
   AlertCircle,
   Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
+import { useToast } from '@/components/ui/Toast';
+import { getErrorMessage } from '@/lib/errors';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
@@ -52,6 +50,7 @@ export default function ReceitasPage() {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const toast = useToast();
   const { boats } = useBoats();
 
   const { data: revenues, loading, error, refetch } = useApi<Revenue[]>(
@@ -87,8 +86,9 @@ export default function ReceitasPage() {
       });
       setIsModalOpen(false);
       refetch();
-    } catch {
-      // error handled silently
+      toast.success('Receita criada com sucesso!');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao criar receita.'));
     }
   }
 
@@ -96,8 +96,9 @@ export default function ReceitasPage() {
     try {
       await revenueService.markAsReceived(id);
       refetch();
-    } catch {
-      // error handled silently
+      toast.success('Receita marcada como recebida!');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao confirmar recebimento.'));
     }
   }
 

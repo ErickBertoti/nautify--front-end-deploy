@@ -53,8 +53,7 @@ export default function AssinaturasPage() {
       toast.success('Assinatura cancelada com sucesso!');
       setSubscriptionToCancel(null);
       refetch();
-    } catch (err) {
-      console.error('Erro ao cancelar assinatura:', err);
+    } catch {
       toast.error('Erro ao cancelar assinatura.');
     } finally {
       setCancelingId(null);
