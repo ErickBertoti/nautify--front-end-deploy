@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { authService } from '@/services';
 import { allNavItems } from './Sidebar';
 import Image from 'next/image';
 import { useTheme } from '@/components/ThemeProvider';
@@ -296,14 +297,13 @@ export function Header() {
                   </Link>
                 </div>
                 <div className="border-t border-border py-1.5">
-                  <Link
-                    href="/login"
-                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                    onClick={() => setUserMenuOpen(false)}
+                  <button
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors w-full cursor-pointer"
+                    onClick={() => { setUserMenuOpen(false); authService.logout(); }}
                   >
                     <LogOut className="h-4 w-4" />
                     Sair
-                  </Link>
+                  </button>
                 </div>
               </div>
             )}
@@ -377,7 +377,7 @@ export function Header() {
                 <Settings className="h-5 w-5" />
                 Configurações
               </Link>
-              <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-muted hover:bg-red-500/10 hover:text-red-400 transition-all w-full cursor-pointer">
+              <button onClick={() => authService.logout()} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-muted hover:bg-red-500/10 hover:text-red-400 transition-all w-full cursor-pointer">
                 <LogOut className="h-5 w-5" />
                 Sair
               </button>

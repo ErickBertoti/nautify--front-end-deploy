@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { authService } from '@/services';
 import Image from 'next/image';
 import {
   LayoutDashboard,
@@ -185,7 +186,7 @@ export function Sidebar() {
           <Settings className="h-5 w-5" />
           Configurações
         </Link>
-        <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-muted hover:bg-red-500/10 hover:text-red-400 transition-all w-full cursor-pointer">
+        <button onClick={() => authService.logout()} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-muted hover:bg-red-500/10 hover:text-red-400 transition-all w-full cursor-pointer">
           <LogOut className="h-5 w-5" />
           Sair
         </button>

@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { fetchCep } from '@/lib/cep';
 import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
 import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
@@ -87,6 +88,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [readDocs, setReadDocs] = useState({ uso: false, privacidade: false, cadastro: false });
+  const [openTerm, setOpenTerm] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -210,6 +212,28 @@ export default function RegisterPage() {
     setSubmitError('');
 
     try {
+      // Verificar disponibilidade de email e CPF
+      try {
+        const { data: availability } = await authService.checkAvailability({
+          email: form.email,
+          document: form.document.replace(/\D/g, ''),
+        });
+        if (!availability.emailAvailable) {
+          setErrors({ email: 'Este email já está em uso' });
+          setStep(3); // Go back to the step with email
+          setIsLoading(false);
+          return;
+        }
+        if (!availability.documentAvailable) {
+          setErrors({ document: 'Este CPF/CNPJ já está em uso' });
+          setStep(1); // Go back to step with document
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // If check fails, proceed anyway (backend will catch it)
+      }
+
       const supabase = createClient();
       const { data, error: sbError } = await supabase.auth.signUp({
         email: form.email,
@@ -669,22 +693,22 @@ export default function RegisterPage() {
                       />
                       <span className="text-sm text-foreground">
                         Li e aceito os{' '}
-                        <a href="/termos/uso" target="_blank" rel="noopener noreferrer" onClick={() => setReadDocs(p => ({...p, uso: true}))} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors">
+                        <button type="button" onClick={(e) => { e.preventDefault(); setOpenTerm('uso'); setReadDocs(p => ({...p, uso: true})); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
                           Termos de Uso
-                        </a>
+                        </button>
                         , a{' '}
-                        <a href="/termos/privacidade" target="_blank" rel="noopener noreferrer" onClick={() => setReadDocs(p => ({...p, privacidade: true}))} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors">
+                        <button type="button" onClick={(e) => { e.preventDefault(); setOpenTerm('privacidade'); setReadDocs(p => ({...p, privacidade: true})); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
                           Política de Privacidade
-                        </a>{' '}
+                        </button>{' '}
                         e o{' '}
-                        <a href="/termos/cadastro-embarcacao" target="_blank" rel="noopener noreferrer" onClick={() => setReadDocs(p => ({...p, cadastro: true}))} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors">
+                        <button type="button" onClick={(e) => { e.preventDefault(); setOpenTerm('cadastro'); setReadDocs(p => ({...p, cadastro: true})); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
                           Termo de Cadastro de Embarcação
-                        </a>
+                        </button>
                       </span>
                     </label>
                     {(!readDocs.uso || !readDocs.privacidade || !readDocs.cadastro) && (
                       <p className="text-xs text-muted-foreground mt-2 ml-1 animate-fade-in fade-in-50">
-                        * Clique nos três links acima para ler e liberar a opção de aceite.
+                        * Clique nos três termos acima para ler e liberar a opção de aceite.
                       </p>
                     )}
                     {errors.acceptTerms && (
@@ -734,6 +758,201 @@ export default function RegisterPage() {
           </div>
 
         </div>
+
+        {/* ── Terms Modal ── */}
+        <Modal
+          isOpen={openTerm !== null}
+          onClose={() => setOpenTerm(null)}
+          title={
+            openTerm === 'uso' ? 'Termos de Uso' :
+            openTerm === 'privacidade' ? 'Política de Privacidade' :
+            openTerm === 'cadastro' ? 'Termo de Cadastro de Embarcação' :
+            ''
+          }
+          className="max-w-2xl"
+        >
+          <div className="max-h-[60vh] overflow-y-auto prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+            {openTerm === 'uso' && (
+              <div className="space-y-8">
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">1. Sobre a Plataforma</h2>
+                  <p>
+                    A Nautify é uma plataforma digital voltada ao gerenciamento de embarcações, permitindo que usuários cadastrem, organizem e acompanhem informações relacionadas aos seus bens náuticos.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">2. Aceitação dos Termos</h2>
+                  <p>
+                    Ao criar uma conta, o usuário declara que leu, entendeu e concorda integralmente com estes Termos de Uso.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">3. Cadastro de Conta</h2>
+                  <p className="mb-2">
+                    O usuário se compromete a fornecer informações verdadeiras, atualizadas e completas no momento do cadastro, sendo o único responsável pelos dados informados.
+                  </p>
+                  <p>
+                    A Nautify não se responsabiliza por informações incorretas fornecidas pelo usuário.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">4. Uso da Plataforma</h2>
+                  <p className="mb-2">O usuário concorda em utilizar a plataforma de forma legal, ética e de acordo com sua finalidade, sendo proibido:</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>Inserir dados falsos ou enganosos</li>
+                    <li>Utilizar a plataforma para fins ilícitos</li>
+                    <li>Tentar invadir, modificar ou prejudicar o sistema</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">5. Planos e Pagamentos</h2>
+                  <p className="mb-2">A Nautify poderá oferecer planos pagos mensais, semestrais e anuais.</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>Os pagamentos são recorrentes, podendo ser processados por plataformas terceiras</li>
+                    <li>A renovação ocorre automaticamente ao final do período contratado</li>
+                    <li>O não pagamento poderá resultar na suspensão ou cancelamento da conta</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">6. Cancelamento</h2>
+                  <p>
+                    O usuário poderá cancelar sua assinatura a qualquer momento. O cancelamento impede novas cobranças, mas não garante reembolso de valores já pagos.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">7. Limitação de Responsabilidade</h2>
+                  <p className="mb-2">A Nautify não garante disponibilidade contínua da plataforma e não se responsabiliza por:</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>Perdas financeiras</li>
+                    <li>Dados inseridos incorretamente pelo usuário</li>
+                    <li>Decisões tomadas com base nas informações da plataforma</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">8. Suspensão ou Encerramento de Conta</h2>
+                  <p className="mb-2">A Nautify poderá suspender ou encerrar contas em caso de:</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>Violação destes termos</li>
+                    <li>Suspeita de fraude ou uso indevido</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">9. Modificações nos Termos</h2>
+                  <p>
+                    Os termos podem ser alterados a qualquer momento, sendo responsabilidade do usuário revisá-los periodicamente.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">10. Foro</h2>
+                  <p>
+                    Fica eleito o foro da comarca do usuário para resolução de eventuais conflitos.
+                  </p>
+                </section>
+              </div>
+            )}
+
+            {openTerm === 'privacidade' && (
+              <div className="space-y-8">
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">1. Coleta de Dados</h2>
+                  <p className="mb-2">Coletamos dados fornecidos pelo usuário, como:</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>Nome</li>
+                    <li>E-mail</li>
+                    <li>Telefone</li>
+                    <li>Informações de embarcações cadastradas</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">2. Uso das Informações</h2>
+                  <p className="mb-2">Os dados são utilizados para:</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>Operação da plataforma</li>
+                    <li>Gestão das embarcações</li>
+                    <li>Comunicação com o usuário</li>
+                    <li>Processamento de pagamentos</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">3. Compartilhamento de Dados</h2>
+                  <p>
+                    Os dados podem ser compartilhados com terceiros quando necessário, como plataformas de pagamento (ex: Asaas), sempre respeitando a legislação vigente.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">4. Segurança</h2>
+                  <p>
+                    Adotamos medidas para proteger os dados, mas não garantimos segurança absoluta contra acessos indevidos.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">5. Direitos do Usuário (LGPD)</h2>
+                  <p className="mb-2">O usuário pode:</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>Solicitar acesso aos dados</li>
+                    <li>Corrigir informações</li>
+                    <li>Solicitar exclusão da conta</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">6. Retenção de Dados</h2>
+                  <p>
+                    Os dados serão armazenados enquanto a conta estiver ativa ou conforme necessário para cumprimento legal.
+                  </p>
+                </section>
+
+                <section>
+                  <h2 className="text-xl font-semibold mb-3 text-foreground">7. Alterações</h2>
+                  <p>
+                    Esta política pode ser atualizada a qualquer momento.
+                  </p>
+                </section>
+              </div>
+            )}
+
+            {openTerm === 'cadastro' && (
+              <div>
+                <p className="mb-4 text-foreground font-medium">Ao cadastrar uma embarcação na plataforma Nautify, o usuário declara que:</p>
+
+                <ol className="list-decimal pl-6 mb-8 space-y-2">
+                  <li>É o proprietário da embarcação ou possui autorização legal para cadastrá-la</li>
+                  <li>Todas as informações fornecidas são verdadeiras e atualizadas</li>
+                  <li>Assume total responsabilidade pelos dados inseridos</li>
+                </ol>
+
+                <p className="mb-4 text-foreground font-medium">A Nautify não realiza validação de propriedade e não se responsabiliza por:</p>
+
+                <ul className="list-disc pl-6 mb-8 space-y-2">
+                  <li>Informações incorretas</li>
+                  <li>Disputas de propriedade</li>
+                  <li>Uso indevido de dados cadastrados</li>
+                </ul>
+
+                <p className="mb-4">
+                  O usuário concorda que os dados da embarcação poderão ser utilizados dentro da plataforma para fins de gerenciamento.
+                </p>
+
+                <p>
+                  A Nautify se reserva o direito de remover cadastros suspeitos ou inconsistentes.
+                </p>
+              </div>
+            )}
+          </div>
+        </Modal>
       </div>
     </div>
   );

@@ -72,6 +72,9 @@ export const authService = {
   updateProfile: (data: Partial<Omit<User, 'id' | 'createdAt'>>) =>
     api.put<ApiResponse<User>>('/auth/profile', data),
 
+  checkAvailability: (data: { email?: string; document?: string }) =>
+    api.post<ApiResponse<{ emailAvailable: boolean; documentAvailable: boolean }>>('/auth/check-availability', data),
+
   logout: async () => {
     const { createClient } = await import('@/utils/supabase/client');
     const supabase = createClient();

@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
 
   const isPublicRoute = publicRoutes.some(
     (route) => request.nextUrl.pathname === route
-  );
+  ) || request.nextUrl.pathname.startsWith("/termos");
 
   // Usuário não logado tentando acessar rota protegida → redireciona pro login
   if (!user && !isPublicRoute) {
