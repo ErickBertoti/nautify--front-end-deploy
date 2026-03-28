@@ -39,6 +39,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     throw new Error(error.message || 'Erro na requisição');
   }
 
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return {} as T;
+  }
   return response.json();
 }
 
