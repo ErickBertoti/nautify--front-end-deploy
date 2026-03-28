@@ -19,7 +19,9 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { StatCard } from '@/components/shared/StatCard';
 import { useToast } from '@/components/ui/Toast';
 import { SUBSCRIPTION_STATUS_META } from '@/constants';
+import { differenceInDays, parseISO } from 'date-fns';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { subscriptionService } from '@/services';
 import type { Subscription } from '@/types';
 
@@ -29,6 +31,7 @@ const PAYMENT_POLL_TIMEOUT_MS = 30000;
 export default function AssinaturasPage() {
   const router = useRouter();
   const toast = useToast();
+  const canWrite = useCanWrite();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +39,7 @@ export default function AssinaturasPage() {
   const [subscriptionToCancel, setSubscriptionToCancel] = useState<Subscription | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
   const handledReturnRef = useRef<string | null>(null);
   const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollingDeadlineRef = useRef(0);
@@ -144,7 +148,12 @@ export default function AssinaturasPage() {
   const subscriptionList = subscriptions ?? [];
   const activeCount = subscriptionList.filter((subscription) => subscription.status === 'active').length;
   const attentionCount = subscriptionList.filter(
-    (subscription) => subscription.status === 'pending' || subscription.status === 'overdue',
+    (subscription) =>
+      subscription.status === 'pending' ||
+      subscription.status === 'overdue' ||
+      (subscription.status === 'trialing' &&
+        subscription.trialEndsAt &&
+        differenceInDays(parseISO(subscription.trialEndsAt), new Date()) <= 0),
   ).length;
   const canceledCount = subscriptionList.filter((subscription) => subscription.status === 'canceled').length;
   const activeValue = subscriptionList
@@ -188,6 +197,22 @@ export default function AssinaturasPage() {
       toast.error('Erro ao cancelar assinatura.');
     } finally {
       setCancelingId(null);
+    }
+  }
+
+  async function handleActivate(id: string) {
+    try {
+      setActivatingId(id);
+      await subscriptionService.activate(id);
+      const { data } = await subscriptionService.getPaymentLink(id);
+      if (data.invoiceUrl) {
+        window.open(data.invoiceUrl, '_blank');
+      }
+      await loadSubscriptions({ silent: true });
+    } catch {
+      toast.error('Erro ao ativar assinatura');
+    } finally {
+      setActivatingId(null);
     }
   }
 
@@ -283,6 +308,10 @@ export default function AssinaturasPage() {
               const planName = subscription.plan?.name || 'Plano Nautify';
               const boatName = subscription.boatName || `Embarcacao ${subscription.boatId.slice(0, 8)}`;
               const isCanceling = cancelingId === subscription.id;
+              const trialDaysLeft = subscription.trialEndsAt
+                ? differenceInDays(parseISO(subscription.trialEndsAt), new Date())
+                : 0;
+              const isTrialExpired = trialDaysLeft <= 0;
 
               return (
                 <Card key={subscription.id} className="border-border/60">
@@ -291,9 +320,24 @@ export default function AssinaturasPage() {
                       <CardTitle className="text-lg">{boatName}</CardTitle>
                       <p className="text-sm text-muted-foreground">{planName}</p>
                     </div>
-                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${status.className}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      {status.label}
+                    <div className="text-right">
+                      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${status.className}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                        {status.label}
+                      </div>
+                      {subscription.status === 'trialing' && subscription.trialEndsAt && (
+                        <div className="text-xs mt-1">
+                          {trialDaysLeft > 0
+                            ? `${trialDaysLeft} dias restantes de trial`
+                            : 'Trial expirado'
+                          }
+                        </div>
+                      )}
+                      {subscription.status === 'trialing' && isTrialExpired && (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-red-500/15 text-red-400 border-red-500/30 mt-1">
+                          Trial expirado
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
 
@@ -324,6 +368,16 @@ export default function AssinaturasPage() {
                       </div>
 
                       <div className="flex gap-2">
+                        {subscription.status === 'trialing' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleActivate(subscription.id)}
+                            disabled={activatingId === subscription.id}
+                            isLoading={activatingId === subscription.id}
+                          >
+                            {activatingId === subscription.id ? 'Ativando...' : 'Assinar agora'}
+                          </Button>
+                        )}
                         {(subscription.status === 'pending' || subscription.status === 'overdue') && (
                           <Button
                             onClick={() => handlePay(subscription.id)}
@@ -334,14 +388,16 @@ export default function AssinaturasPage() {
                             Pagar
                           </Button>
                         )}
-                        <Button
-                          variant={status.cancelable ? 'destructive' : 'outline'}
-                          onClick={() => setSubscriptionToCancel(subscription)}
-                          disabled={!status.cancelable || isCanceling}
-                          isLoading={isCanceling}
-                        >
-                          {status.cancelable ? 'Cancelar assinatura' : 'Assinatura cancelada'}
-                        </Button>
+                        {canWrite && (
+                          <Button
+                            variant={status.cancelable ? 'destructive' : 'outline'}
+                            onClick={() => setSubscriptionToCancel(subscription)}
+                            disabled={!status.cancelable || isCanceling}
+                            isLoading={isCanceling}
+                          >
+                            {status.cancelable ? 'Cancelar assinatura' : 'Assinatura cancelada'}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>

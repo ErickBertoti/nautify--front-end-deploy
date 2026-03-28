@@ -32,6 +32,7 @@ import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { boatService, expenseService, tripService, incidentService } from '@/services';
 import type { Boat, BoatMember, Expense, Trip, Incident } from '@/types';
 import { BOAT_TYPE_LABELS } from '@/constants';
@@ -41,6 +42,7 @@ export default function BoatDetailsPage() {
   const router = useRouter();
   const boatId = (params.id as string) || '';
   
+  const canWrite = useCanWrite();
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'financeiro' | 'historico'>('visao_geral');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -209,14 +211,16 @@ export default function BoatDetailsPage() {
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto pb-2">
-             <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm border-border" onClick={() => setShowEditModal(true)}>
-               <Edit className="h-4 w-4 mr-2" /> Editar
-             </Button>
-             <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 border-destructive/20 hover:border-destructive/30" onClick={() => setShowDeleteConfirm(true)}>
-               <Trash2 className="h-4 w-4" />
-             </Button>
-          </div>
+          {canWrite && (
+            <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto pb-2">
+               <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm border-border" onClick={() => setShowEditModal(true)}>
+                 <Edit className="h-4 w-4 mr-2" /> Editar
+               </Button>
+               <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 border-destructive/20 hover:border-destructive/30" onClick={() => setShowDeleteConfirm(true)}>
+                 <Trash2 className="h-4 w-4" />
+               </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -224,7 +228,7 @@ export default function BoatDetailsPage() {
       <div className="flex items-center gap-2 border-b border-border/60 pb-1 overflow-x-auto scrollbar-hide">
         {[
           { id: 'visao_geral', label: 'Visão Geral', icon: Ship },
-          { id: 'financeiro', label: 'Financeiro', icon: Receipt },
+          ...(!boat.isRental ? [{ id: 'financeiro', label: 'Financeiro', icon: Receipt }] : []),
           { id: 'historico', label: 'Histórico & Agenda', icon: Clock },
         ].map((tab) => {
            const Icon = tab.icon;
@@ -261,6 +265,7 @@ export default function BoatDetailsPage() {
           {/* Aba VISÃO GERAL */}
           {activeTab === 'visao_geral' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {!boat.isRental && (
               <div className="lg:col-span-2 space-y-6">
                 <Card className="border border-border/60 shadow-sm">
                   <CardHeader className="bg-muted/20 border-b border-border/50 flex flex-row items-center justify-between">
@@ -268,9 +273,11 @@ export default function BoatDetailsPage() {
                       <Users className="h-5 w-5 text-nautify-600" />
                       Sócios e Participantes
                     </CardTitle>
-                    <Button size="sm" variant="outline" onClick={() => setShowAddMemberModal(true)}>
-                      <Plus className="h-4 w-4 mr-1" /> Adicionar
-                    </Button>
+                    {canWrite && (
+                      <Button size="sm" variant="outline" onClick={() => setShowAddMemberModal(true)}>
+                        <Plus className="h-4 w-4 mr-1" /> Adicionar
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent className="pt-6">
                     {activeMembers.length > 0 ? (
@@ -293,10 +300,10 @@ export default function BoatDetailsPage() {
                         ))}
                       </div>
                     ) : (
-                      <EmptyState 
-                        size="sm" 
-                        icon={Users} 
-                        title="Nenhum sócio ativo" 
+                      <EmptyState
+                        size="sm"
+                        icon={Users}
+                        title="Nenhum sócio ativo"
                         description="Adicione membros para dividirem os custos e utilizarem a embarcação."
                         actionLabel="Adicionar Sócio"
                         onAction={() => setShowAddMemberModal(true)}
@@ -305,6 +312,7 @@ export default function BoatDetailsPage() {
                   </CardContent>
                 </Card>
               </div>
+              )}
 
               <div className="space-y-6">
                  {/* Painel lateral de Quick Stats */}
@@ -352,7 +360,7 @@ export default function BoatDetailsPage() {
           )}
 
           {/* Aba FINANCEIRO */}
-          {activeTab === 'financeiro' && (
+          {activeTab === 'financeiro' && !boat.isRental && (
              <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <StatCard title="Despesas Recentes" value={formatCurrency(expenses.reduce((s: number, e: Expense) => s + e.amount, 0))} subtitle="últimos registros" icon={Receipt} iconBgColor="bg-red-100 dark:bg-red-500/20" iconColor="text-red-600 dark:text-red-400" />

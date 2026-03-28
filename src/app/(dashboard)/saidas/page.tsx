@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats, useBoatMembers } from '@/hooks/useEntityOptions';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { tripService } from '@/services';
 import type { Trip } from '@/types';
 
@@ -50,6 +51,7 @@ export default function SaidasPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [selectedBoatId, setSelectedBoatId] = useState('');
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
   const { socios, sailors } = useBoatMembers(selectedBoatId);
 
@@ -121,10 +123,10 @@ export default function SaidasPage() {
           <h1 className="text-2xl font-bold text-foreground">Saídas</h1>
           <p className="text-muted-foreground">Registro e acompanhamento de saídas das embarcações</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
+        {canWrite && <Button onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" />
           Nova Saída
-        </Button>
+        </Button>}
       </div>
 
       {/* Quick Stats */}
@@ -271,7 +273,7 @@ export default function SaidasPage() {
                           &ldquo;{trip.observations}&rdquo;
                         </p>
                       )}
-                      {(trip.status === 'agendada' || trip.status === 'em_andamento') && (
+                      {canWrite && (trip.status === 'agendada' || trip.status === 'em_andamento') && (
                         <div className="flex gap-2 mt-2">
                           {trip.status === 'agendada' && (
                             <Button size="sm" onClick={() => handleStart(trip.id)}>Iniciar</Button>

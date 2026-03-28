@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
 import {
   CalendarDays,
   Plus,
@@ -13,14 +14,19 @@ import {
   Bell,
   Loader2,
   AlertCircle,
+  Upload,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors';
 import { useApi } from '@/hooks/useApi';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { useBoats } from '@/hooks/useEntityOptions';
 import { calendarService } from '@/services';
 import type { CalendarEvent } from '@/types';
@@ -52,15 +58,21 @@ function getCalendarDays(year: number, month: number) {
 
 export default function AgendaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importedEvents, setImportedEvents] = useState<Array<{ title: string; type: string; startDate: string; endDate: string; boatId: string; description: string }>>([]);
+  const [importing, setImporting] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const canWrite = useCanWrite();
+  const toast = useToast();
   const { boats } = useBoats();
   const [currentYear] = useState(2026);
   const [filterType, setFilterType] = useState('');
+  const [boatFilter, setBoatFilter] = useState('');
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
 
   const { data: events, loading, error, refetch } = useApi<CalendarEvent[]>(
-    () => calendarService.list(),
-    [],
+    () => calendarService.list({ boatId: boatFilter || undefined }),
+    [boatFilter],
   );
 
   const calendarDays = getCalendarDays(currentYear, currentMonth);
@@ -99,6 +111,55 @@ export default function AgendaPage() {
   const handleDeleteEvent = async (id: string) => {
     await calendarService.delete(id);
     refetch();
+  };
+
+  const handleImportFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
+
+        const parsed = rows.map((row) => ({
+          title: row['Título'] || row['titulo'] || row['title'] || '',
+          type: (row['Tipo'] || row['tipo'] || row['type'] || 'evento').toLowerCase(),
+          startDate: row['Data Início'] || row['data_inicio'] || row['startDate'] || '',
+          endDate: row['Data Fim'] || row['data_fim'] || row['endDate'] || '',
+          boatId: row['Embarcação ID'] || row['boatId'] || '',
+          description: row['Descrição'] || row['descricao'] || row['description'] || '',
+        })).filter((e) => e.title && e.startDate);
+
+        setImportedEvents(parsed);
+      } catch {
+        toast.error('Erro ao ler planilha');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleConfirmImport = async () => {
+    try {
+      setImporting(true);
+      const events = importedEvents.map((e) => ({
+        title: e.title,
+        type: (e.type || 'evento') as CalendarEvent['type'],
+        startDate: e.startDate,
+        endDate: e.endDate || e.startDate,
+        boatId: e.boatId || undefined,
+        description: e.description || undefined,
+      }));
+      const { data } = await calendarService.bulkCreate(events);
+      toast.success(`${data.created} eventos importados com sucesso!`);
+      setImportedEvents([]);
+      setIsImportModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao importar eventos'));
+    } finally {
+      setImporting(false);
+    }
   };
 
   if (loading) {
@@ -141,13 +202,26 @@ export default function AgendaPage() {
               Lista
             </button>
           </div>
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Novo Evento
-          </Button>
+          {canWrite && (
+            <>
+              <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" /> Importar
+              </Button>
+              <Button onClick={() => setIsModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Novo Evento
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Boat Filter + Legend */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <Select value={boatFilter} onChange={(e) => setBoatFilter(e.target.value)}>
+          <option value="">Todas embarcações</option>
+          {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </Select>
+      </div>
       <div className="flex flex-wrap gap-4">
         {Object.entries(eventTypeConfig).map(([type, config]) => (
           <button
@@ -265,14 +339,16 @@ export default function AgendaPage() {
                     <div className="flex items-center gap-2 ml-[52px] sm:ml-0 shrink-0">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config?.bgColor}`}>{config?.label}</span>
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status?.color}`}>{status?.label}</span>
-                      {event.status === 'confirmado' && (
+                      {canWrite && event.status === 'confirmado' && (
                         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-amber-600 text-xs px-2" onClick={() => handleCancelEvent(event.id)}>
                           Cancelar
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 text-xs px-2" onClick={() => handleDeleteEvent(event.id)}>
-                        Excluir
-                      </Button>
+                      {canWrite && (
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 text-xs px-2" onClick={() => handleDeleteEvent(event.id)}>
+                          Excluir
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -309,6 +385,65 @@ export default function AgendaPage() {
             <Button type="submit">Criar Evento</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={isImportModalOpen} onClose={() => { setIsImportModalOpen(false); setImportedEvents([]); }} title="Importar Eventos de Planilha">
+        <div className="space-y-4">
+          {importedEvents.length === 0 ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Envie uma planilha (.xlsx ou .csv) com as colunas: Título, Tipo, Data Início, Data Fim, Embarcação ID, Descrição
+              </p>
+              <div>
+                <input
+                  type="file"
+                  accept=".xlsx,.csv,.xls"
+                  className="hidden"
+                  id="import-file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportFile(file);
+                  }}
+                />
+                <label htmlFor="import-file" className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-nautify-300 transition-colors cursor-pointer block">
+                  <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm font-medium">Clique para selecionar arquivo</p>
+                  <p className="text-xs text-muted-foreground mt-1">.xlsx, .csv</p>
+                </label>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">{importedEvents.length} eventos encontrados</p>
+              <div className="max-h-64 overflow-auto border border-border rounded-lg">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left px-3 py-2">Título</th>
+                      <th className="text-left px-3 py-2">Tipo</th>
+                      <th className="text-left px-3 py-2">Início</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importedEvents.slice(0, 50).map((ev, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td className="px-3 py-2">{ev.title}</td>
+                        <td className="px-3 py-2">{ev.type}</td>
+                        <td className="px-3 py-2">{ev.startDate}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setImportedEvents([])}>Voltar</Button>
+                <Button className="flex-1" onClick={handleConfirmImport} disabled={importing}>
+                  {importing ? 'Importando...' : `Importar ${importedEvents.length} eventos`}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
       </Modal>
     </div>
   );

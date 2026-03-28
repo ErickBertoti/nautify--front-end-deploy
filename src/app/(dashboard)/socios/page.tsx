@@ -25,6 +25,7 @@ import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { useBoats } from '@/hooks/useEntityOptions';
 import { partnerService } from '@/services';
 import type { Partner, PartnerContribution } from '@/types';
@@ -60,6 +61,7 @@ export default function SociosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'socios' | 'contribuicoes'>('socios');
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
 
   const { data: partnersData, loading: loadingPartners, error: errorPartners, refetch: refetchPartners } = useApi(
@@ -152,9 +154,11 @@ export default function SociosPage() {
           <h1 className="text-2xl font-bold">Sócios</h1>
           <p className="text-muted-foreground">Gestão de sócios e contribuições</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Adicionar Sócio
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Adicionar Sócio
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -233,7 +237,7 @@ export default function SociosPage() {
                             </p>
                           </div>
                         </div>
-                        {partner.status === 'ativo' && (
+                        {canWrite && partner.status === 'ativo' && (
                           <div className="mt-3 flex justify-end">
                             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 text-xs" onClick={() => handleDeactivatePartner(partner.id)}>
                               <UserX className="h-3.5 w-3.5 mr-1" /> Desativar
@@ -251,11 +255,13 @@ export default function SociosPage() {
       ) : (
         /* Contributions Tab */
         <>
-        <div className="flex justify-end">
-          <Button onClick={handleGenerateContributions}>
-            <DollarSign className="h-4 w-4 mr-2" /> Gerar Contribuições do Mês
-          </Button>
-        </div>
+        {canWrite && (
+          <div className="flex justify-end">
+            <Button onClick={handleGenerateContributions}>
+              <DollarSign className="h-4 w-4 mr-2" /> Gerar Contribuições do Mês
+            </Button>
+          </div>
+        )}
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -286,7 +292,7 @@ export default function SociosPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">{contrib.paidAt ? formatDate(contrib.paidAt) : '—'}</td>
                         <td className="px-6 py-4">
-                          {contrib.status !== 'pago' && <Button variant="ghost" size="sm" onClick={() => handlePayContribution(contrib.id)}>Confirmar</Button>}
+                          {canWrite && contrib.status !== 'pago' && <Button variant="ghost" size="sm" onClick={() => handlePayContribution(contrib.id)}>Confirmar</Button>}
                         </td>
                       </tr>
                     );

@@ -20,6 +20,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { revenueService } from '@/services';
 import type { Revenue } from '@/types';
 
@@ -51,6 +52,7 @@ export default function ReceitasPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const toast = useToast();
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
 
   const { data: revenues, loading, error, refetch } = useApi<Revenue[]>(
@@ -127,9 +129,9 @@ export default function ReceitasPage() {
           <h1 className="text-2xl font-bold">Receitas</h1>
           <p className="text-muted-foreground">Controle de entradas financeiras</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        {canWrite && <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" /> Nova Receita
-        </Button>
+        </Button>}
       </div>
 
       {/* Stats */}
@@ -206,7 +208,7 @@ export default function ReceitasPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {revenue.status !== 'recebida' && (
+                        {canWrite && revenue.status !== 'recebida' && (
                           <Button variant="ghost" size="sm" onClick={() => handleMarkAsReceived(revenue.id)}>Confirmar</Button>
                         )}
                       </td>

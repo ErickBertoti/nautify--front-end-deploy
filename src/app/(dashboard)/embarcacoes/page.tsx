@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Ship, Plus, Users, MapPin, Search, Calendar, Loader2, Camera } from 'lucide-react';
 import { uploadFile } from '@/lib/storage';
@@ -13,6 +14,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { BOAT_TYPE_LABELS, SUBSCRIPTION_STATUS_META } from '@/constants';
 import { useApi } from '@/hooks/useApi';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { getErrorMessage } from '@/lib/errors';
 import { boatService } from '@/services';
 import type { Boat } from '@/types';
@@ -22,7 +24,9 @@ export default function EmbarcacoesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [boatImage, setBoatImage] = useState<File | null>(null);
+  const router = useRouter();
   const toast = useToast();
+  const canWrite = useCanWrite();
   const { data: boats, loading, error, refetch } = useApi<Boat[]>(() => boatService.list());
 
   const handleCreateBoat = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -42,12 +46,14 @@ export default function EmbarcacoesPage() {
         year: form.get('year') ? Number(form.get('year')) : undefined,
         registrationNumber: form.get('registrationNumber') as string || undefined,
         marinaName: form.get('marinaName') as string || undefined,
+        isRental: form.get('isRental') === 'on',
         imageUrl,
       });
       setShowAddModal(false);
       setBoatImage(null);
       refetch();
       toast.success('Embarcação criada com sucesso!');
+      router.push('/assinaturas');
     } catch (err) {
       toast.error(getErrorMessage(err, 'Erro ao criar embarcação.'));
     } finally {
@@ -88,10 +94,12 @@ export default function EmbarcacoesPage() {
           <h1 className="text-2xl font-bold text-foreground">Embarcações</h1>
           <p className="text-muted-foreground">Gerencie suas embarcações e sócios</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
-          <Plus className="h-4 w-4" />
-          Nova Embarcação
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setShowAddModal(true)}>
+            <Plus className="h-4 w-4" />
+            Nova Embarcação
+          </Button>
+        )}
       </div>
 
       <div className="relative max-w-sm">
@@ -252,6 +260,10 @@ export default function EmbarcacoesPage() {
                 </>
               )}
             </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" name="isRental" id="isRental" className="rounded border-border" />
+            <label htmlFor="isRental" className="text-sm">Equipamento de aluguel</label>
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" type="button" onClick={() => { setShowAddModal(false); setBoatImage(null); }}>

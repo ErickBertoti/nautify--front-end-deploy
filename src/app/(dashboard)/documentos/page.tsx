@@ -31,6 +31,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/utils';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useApi } from '@/hooks/useApi';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { useBoats } from '@/hooks/useEntityOptions';
 import { documentService } from '@/services';
 import { uploadFile } from '@/lib/storage';
@@ -56,14 +57,17 @@ export default function DocumentosPage() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todos');
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [boatFilter, setBoatFilter] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const toast = useToast();
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
 
   const { data: documents, loading, error, refetch } = useApi<NautifyDocument[]>(
-    () => documentService.list(),
+    () => documentService.list({ boatId: boatFilter || undefined }),
+    [boatFilter],
   );
 
   if (loading) {
@@ -101,9 +105,11 @@ export default function DocumentosPage() {
           <h1 className="text-2xl font-bold">Documentos</h1>
           <p className="text-muted-foreground">Gerencie documentos de embarcações e sócios</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Upload className="h-4 w-4 mr-2" /> Enviar Documento
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" /> Enviar Documento
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -115,7 +121,7 @@ export default function DocumentosPage() {
       </div>
 
       {/* Upload Area */}
-      <Card
+      {canWrite && <Card
         className={`border-2 border-dashed transition-colors ${dragActive ? 'border-nautify-400 bg-nautify-50/50' : 'border-border'}`}
         onDragOver={(e: React.DragEvent) => { e.preventDefault(); setDragActive(true); }}
         onDragLeave={() => setDragActive(false)}
@@ -160,7 +166,7 @@ export default function DocumentosPage() {
             </>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -181,6 +187,10 @@ export default function DocumentosPage() {
           <option value="valido">Válido</option>
           <option value="vencendo">Vencendo</option>
           <option value="vencido">Vencido</option>
+        </Select>
+        <Select value={boatFilter} onChange={(e) => setBoatFilter(e.target.value)}>
+          <option value="">Todas embarcações</option>
+          {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </Select>
       </div>
 

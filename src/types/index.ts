@@ -56,6 +56,7 @@ export interface Boat {
   imageUrl?: string;
   marinaName?: string;
   marinaLocation?: string;
+  isRental?: boolean;
   createdAt: string;
   members: BoatMember[];
   subscription?: Subscription;
@@ -244,6 +245,19 @@ export interface MaintenancePart {
   totalCost: number;
 }
 
+export interface MaintenancePartHistory {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  maintenanceId: string;
+  maintenanceTitle: string;
+  scheduledDate: string;
+  boatId: string;
+  boatName: string;
+}
+
 // --- Agenda ---
 export type EventType = 'reserva' | 'manutencao' | 'lembrete' | 'evento' | 'outro';
 export type EventStatus = 'confirmado' | 'pendente' | 'cancelado';
@@ -393,7 +407,7 @@ export interface DashboardStats {
 }
 
 // --- Billing ---
-export type SubscriptionStatus = 'pending' | 'active' | 'overdue' | 'canceled';
+export type SubscriptionStatus = 'trialing' | 'pending' | 'active' | 'overdue' | 'canceled';
 
 export interface Plan {
   id: string;
@@ -418,6 +432,7 @@ export interface Subscription {
   billingType: string;
   value: number;
   nextDueDate?: string;
+  trialEndsAt?: string;
   createdAt: string;
   updatedAt: string;
 }

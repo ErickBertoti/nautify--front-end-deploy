@@ -20,6 +20,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { expenseService } from '@/services';
 import type { Expense } from '@/types';
 
@@ -47,6 +48,7 @@ export default function DespesasPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const toast = useToast();
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
 
   const { data: expenses, loading, error, refetch } = useApi<Expense[]>(
@@ -123,9 +125,9 @@ export default function DespesasPage() {
           <h1 className="text-2xl font-bold">Despesas</h1>
           <p className="text-muted-foreground">Controle de saídas financeiras e rateio</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        {canWrite && <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" /> Nova Despesa
-        </Button>
+        </Button>}
       </div>
 
       {/* Stats */}
@@ -218,7 +220,7 @@ export default function DespesasPage() {
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>{status.label}</span>
                       </td>
                       <td className="px-6 py-4">
-                        {expense.status === 'pendente' && <Button variant="ghost" size="sm" onClick={() => handleMarkAsPaid(expense.id)}>Pagar</Button>}
+                        {canWrite && expense.status === 'pendente' && <Button variant="ghost" size="sm" onClick={() => handleMarkAsPaid(expense.id)}>Pagar</Button>}
                       </td>
                     </tr>
                   );

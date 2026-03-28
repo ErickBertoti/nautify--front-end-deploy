@@ -24,8 +24,10 @@ import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { maintenanceService } from '@/services';
-import type { Maintenance } from '@/types';
+import type { Maintenance, MaintenancePartHistory } from '@/types';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   agendada: { label: 'Agendada', color: 'bg-blue-50 text-blue-700', icon: Calendar },
@@ -72,6 +74,9 @@ export default function ManutencaoPage() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [activeTab, setActiveTab] = useState<'manutencoes' | 'pecas'>('manutencoes');
+  const [partsBoatFilter, setPartsBoatFilter] = useState('');
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
 
   const { data: paginatedData, loading, error, refetch } = useApi(
@@ -80,6 +85,12 @@ export default function ManutencaoPage() {
   );
 
   const maintenances: Maintenance[] = paginatedData ?? [];
+
+  const { data: partsData, loading: loadingParts } = useApi(
+    () => maintenanceService.listParts({ boatId: partsBoatFilter || undefined }),
+    [partsBoatFilter, activeTab],
+  );
+  const parts: MaintenancePartHistory[] = (partsData as any)?.items ?? [];
 
   const agendadas = maintenances.filter((m) => m.status === 'agendada').length;
   const emAndamento = maintenances.filter((m) => m.status === 'em_andamento').length;
@@ -149,11 +160,17 @@ export default function ManutencaoPage() {
           <h1 className="text-2xl font-bold">Manutenção</h1>
           <p className="text-muted-foreground">Gestão de manutenções preventivas e corretivas</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        {canWrite && <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" /> Nova Manutenção
-        </Button>
+        </Button>}
       </div>
 
+      <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+        <button onClick={() => setActiveTab('manutencoes')} className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${activeTab === 'manutencoes' ? 'bg-nautify-600 text-white' : 'hover:bg-muted'}`}>Manutenções</button>
+        <button onClick={() => setActiveTab('pecas')} className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${activeTab === 'pecas' ? 'bg-nautify-600 text-white' : 'hover:bg-muted'}`}>Peças Trocadas</button>
+      </div>
+
+      {activeTab === 'manutencoes' && (<>
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Agendadas" value={String(agendadas)} subtitle="futuras" icon={Calendar} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
@@ -258,7 +275,7 @@ export default function ManutencaoPage() {
                   </div>
                 )}
 
-                {(maintenance.status === 'agendada' || maintenance.status === 'em_andamento') && (
+                {canWrite && (maintenance.status === 'agendada' || maintenance.status === 'em_andamento') && (
                   <div className="flex gap-2 mt-4">
                     {maintenance.status === 'agendada' && <Button variant="outline" size="sm" className="flex-1" onClick={() => handleStart(maintenance)}>Iniciar</Button>}
                     {maintenance.status === 'em_andamento' && <Button size="sm" className="flex-1" onClick={() => handleComplete(maintenance.id)}>Concluir</Button>}
@@ -270,6 +287,58 @@ export default function ManutencaoPage() {
           );
         })}
       </div>
+      </>)}
+
+      {activeTab === 'pecas' && (
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <Select value={partsBoatFilter} onChange={(e) => setPartsBoatFilter(e.target.value)}>
+              <option value="">Todas embarcações</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </Select>
+          </div>
+          {loadingParts ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : parts.length === 0 ? (
+            <EmptyState icon={Wrench} title="Nenhuma peça registrada" description="Peças adicionadas em manutenções aparecerão aqui" />
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="text-left px-4 py-3 font-medium">Peça</th>
+                        <th className="text-left px-4 py-3 font-medium">Qtd</th>
+                        <th className="text-left px-4 py-3 font-medium">Custo Unit.</th>
+                        <th className="text-left px-4 py-3 font-medium">Total</th>
+                        <th className="text-left px-4 py-3 font-medium">Manutenção</th>
+                        <th className="text-left px-4 py-3 font-medium">Data</th>
+                        <th className="text-left px-4 py-3 font-medium">Embarcação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parts.map((p) => (
+                        <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-3 font-medium">{p.name}</td>
+                          <td className="px-4 py-3">{p.quantity}</td>
+                          <td className="px-4 py-3">R$ {p.unitCost.toFixed(2)}</td>
+                          <td className="px-4 py-3 font-medium">R$ {p.totalCost.toFixed(2)}</td>
+                          <td className="px-4 py-3">{p.maintenanceTitle}</td>
+                          <td className="px-4 py-3">{new Date(p.scheduledDate).toLocaleDateString('pt-BR')}</td>
+                          <td className="px-4 py-3">{p.boatName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Manutenção">

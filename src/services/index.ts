@@ -13,6 +13,7 @@ import type {
   FuelConsumptionSummary,
   Incident,
   Maintenance,
+  MaintenancePartHistory,
   CalendarEvent,
   Partner,
   PartnerContribution,
@@ -285,6 +286,14 @@ export const maintenanceService = {
 
   complete: (id: string, data: { actualCost?: number; notes?: string }) =>
     api.patch<ApiResponse<Maintenance>>(`/maintenances/${id}/complete`, data),
+
+  listParts: (params?: { boatId?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api.get<PaginatedResponse<MaintenancePartHistory>>(`/maintenance-parts?${query.toString()}`);
+  },
 };
 
 // ============================================
@@ -310,6 +319,9 @@ export const calendarService = {
   delete: (id: string) => api.delete<ApiResponse<void>>(`/events/${id}`),
 
   cancel: (id: string) => api.patch<ApiResponse<CalendarEvent>>(`/events/${id}/cancel`, {}),
+
+  bulkCreate: (events: Partial<CalendarEvent>[]) =>
+    api.post<ApiResponse<{ created: number }>>('/events/bulk', { events }),
 };
 
 // ============================================
@@ -429,6 +441,8 @@ export const subscriptionService = {
   getById: (id: string) => api.get<ApiResponse<Subscription>>(`/subscriptions/${id}`),
 
   cancel: (id: string) => api.post<ApiResponse<void>>(`/subscriptions/${id}/cancel`, {}),
+
+  activate: (id: string) => api.post<ApiResponse<{ id: string; status: string }>>(`/subscriptions/${id}/activate`, {}),
 
   getPaymentLink: (id: string) => api.get<ApiResponse<{ invoiceUrl: string; bankSlipUrl: string; status: string; dueDate: string }>>(`/subscriptions/${id}/payment-link`),
 };

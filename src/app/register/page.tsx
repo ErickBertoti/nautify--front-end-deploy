@@ -86,6 +86,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [readDocs, setReadDocs] = useState({ uso: false, privacidade: false, cadastro: false });
 
   const [form, setForm] = useState({
     name: '',
@@ -104,7 +105,6 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     acceptTerms: false,
-    acceptPrivacy: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -190,8 +190,7 @@ export default function RegisterPage() {
       if (form.password !== form.confirmPassword) e.confirmPassword = 'As senhas não coincidem';
     }
     if (s === 4) {
-      if (!form.acceptTerms) e.acceptTerms = 'Aceite os termos de uso';
-      if (!form.acceptPrivacy) e.acceptPrivacy = 'Aceite a política de privacidade';
+      if (!form.acceptTerms) e.acceptTerms = 'Você deve aceitar os termos e políticas para concluir o cadastro.';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -646,93 +645,56 @@ export default function RegisterPage() {
           {step === 4 && (
             <div key="step-4" className="space-y-5 animate-step-enter">
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Termos e Condições</h2>
+                <h2 className="text-2xl font-bold text-foreground">Termos e Políticas</h2>
                 <p className="text-muted-foreground mt-1">Leia e aceite para finalizar seu cadastro</p>
               </div>
 
-              {/* Termos de Uso */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Termos de Uso
-                </h3>
-                <div className="h-36 overflow-y-auto rounded-lg border border-input bg-muted/50 p-4 text-xs text-muted-foreground leading-relaxed">
-                  <p className="mb-2 font-semibold text-foreground">Termos de Uso — Nautify</p>
-                  <p className="mb-2">
-                    Ao utilizar a plataforma Nautify, você concorda com os seguintes termos e condições.
-                    A Nautify é uma plataforma de gestão de sociedades náuticas que permite o controle
-                    de embarcações compartilhadas, despesas, receitas, manutenção e operações.
+              <div className="space-y-4">
+                <div className="rounded-xl border border-input bg-muted/30 p-5 sm:p-6 text-sm text-muted-foreground leading-relaxed shadow-sm">
+                  <p className="mb-4">
+                    Para utilizar a plataforma Nautify, você precisa concordar com nossos documentos legais que regulamentam o uso do sistema, a proteção dos seus dados e as responsabilidades envolvidas.
                   </p>
-                  <p className="mb-2">
-                    O usuário se compromete a fornecer informações verdadeiras e atualizadas durante
-                    o cadastro e uso da plataforma. É de responsabilidade do usuário manter a
-                    confidencialidade de suas credenciais de acesso.
-                  </p>
-                  <p className="mb-2">
-                    A plataforma reserva-se o direito de suspender ou cancelar contas que violem
-                    estes termos ou que utilizem o serviço de forma inadequada.
-                  </p>
-                  <p>
-                    Estes termos podem ser atualizados periodicamente, e o uso continuado da
-                    plataforma constitui aceite das alterações. Última atualização: Fevereiro 2026.
-                  </p>
+                  
+                  <div className="mt-6 pt-6 border-t border-input/50">
+                    <label className={cn(
+                      "flex items-start gap-4 cursor-pointer group hover:bg-background/80 p-3 -mx-3 rounded-lg transition-colors",
+                      (!readDocs.uso || !readDocs.privacidade || !readDocs.cadastro) && "opacity-60 cursor-not-allowed hover:bg-transparent"
+                    )}>
+                      <input
+                        type="checkbox"
+                        checked={form.acceptTerms}
+                        onChange={(e) => updateField('acceptTerms', e.target.checked)}
+                        disabled={!readDocs.uso || !readDocs.privacidade || !readDocs.cadastro}
+                        className="mt-0.5 h-5 w-5 rounded border-input accent-primary cursor-pointer shrink-0 transition-all focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed"
+                      />
+                      <span className="text-sm text-foreground">
+                        Li e aceito os{' '}
+                        <a href="/termos/uso" target="_blank" rel="noopener noreferrer" onClick={() => setReadDocs(p => ({...p, uso: true}))} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors">
+                          Termos de Uso
+                        </a>
+                        , a{' '}
+                        <a href="/termos/privacidade" target="_blank" rel="noopener noreferrer" onClick={() => setReadDocs(p => ({...p, privacidade: true}))} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors">
+                          Política de Privacidade
+                        </a>{' '}
+                        e o{' '}
+                        <a href="/termos/cadastro-embarcacao" target="_blank" rel="noopener noreferrer" onClick={() => setReadDocs(p => ({...p, cadastro: true}))} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors">
+                          Termo de Cadastro de Embarcação
+                        </a>
+                      </span>
+                    </label>
+                    {(!readDocs.uso || !readDocs.privacidade || !readDocs.cadastro) && (
+                      <p className="text-xs text-muted-foreground mt-2 ml-1 animate-fade-in fade-in-50">
+                        * Clique nos três links acima para ler e liberar a opção de aceite.
+                      </p>
+                    )}
+                    {errors.acceptTerms && (
+                      <p className="text-sm font-medium text-destructive mt-3 flex items-center gap-1.5 bg-destructive/10 text-destructive px-3 py-2 rounded-md animate-fade-in">
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                        {errors.acceptTerms}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={form.acceptTerms}
-                    onChange={(e) => updateField('acceptTerms', e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary cursor-pointer"
-                  />
-                  <span className="text-sm text-foreground group-hover:text-primary transition-colors">
-                    Li e aceito os <span className="font-medium text-primary">Termos de Uso</span>
-                  </span>
-                </label>
-                {errors.acceptTerms && (
-                  <p className="text-xs text-destructive">{errors.acceptTerms}</p>
-                )}
-              </div>
-
-              {/* Política de Privacidade */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-primary" />
-                  Política de Privacidade
-                </h3>
-                <div className="h-36 overflow-y-auto rounded-lg border border-input bg-muted/50 p-4 text-xs text-muted-foreground leading-relaxed">
-                  <p className="mb-2 font-semibold text-foreground">Política de Privacidade — Nautify</p>
-                  <p className="mb-2">
-                    A Nautify respeita sua privacidade e está comprometida com a proteção dos seus
-                    dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD).
-                  </p>
-                  <p className="mb-2">
-                    Coletamos apenas os dados necessários para o funcionamento da plataforma,
-                    incluindo: nome, e-mail, telefone, CPF/CNPJ, endereço e dados financeiros
-                    relacionados às embarcações cadastradas.
-                  </p>
-                  <p className="mb-2">
-                    Seus dados não serão compartilhados com terceiros sem seu consentimento
-                    explícito, exceto quando exigido por lei ou ordem judicial.
-                  </p>
-                  <p>
-                    Você pode solicitar a exclusão dos seus dados a qualquer momento entrando
-                    em contato com nosso suporte. Última atualização: Fevereiro 2026.
-                  </p>
-                </div>
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={form.acceptPrivacy}
-                    onChange={(e) => updateField('acceptPrivacy', e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary cursor-pointer"
-                  />
-                  <span className="text-sm text-foreground group-hover:text-primary transition-colors">
-                    Li e aceito a <span className="font-medium text-primary">Política de Privacidade</span>
-                  </span>
-                </label>
-                {errors.acceptPrivacy && (
-                  <p className="text-xs text-destructive">{errors.acceptPrivacy}</p>
-                )}
               </div>
             </div>
           )}

@@ -23,6 +23,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats, useTrips } from '@/hooks/useEntityOptions';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { incidentService } from '@/services';
 import { uploadFile } from '@/lib/storage';
 import type { Incident } from '@/types';
@@ -41,6 +42,7 @@ export default function ChamadosPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedBoatId, setSelectedBoatId] = useState('');
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
   const { trips } = useTrips(selectedBoatId);
 
@@ -131,10 +133,10 @@ export default function ChamadosPage() {
           <h1 className="text-2xl font-bold text-foreground">Chamados</h1>
           <p className="text-muted-foreground">Registro de danos e ocorrências nas embarcações</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
+        {canWrite && <Button onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" />
           Novo Chamado
-        </Button>
+        </Button>}
       </div>
 
       {/* Alert Banner */}
@@ -250,14 +252,14 @@ export default function ChamadosPage() {
                         {formatCurrency(incident.estimatedCost)}
                       </p>
                       <p className="text-xs text-muted-foreground">custo estimado</p>
-                      {incident.status === 'pendente' && (
+                      {canWrite && incident.status === 'pendente' && (
                         <div className="mt-2 space-y-1">
                           <Button size="sm" className="w-full" onClick={() => handleApprove(incident.id)}>
                             Aprovar
                           </Button>
                         </div>
                       )}
-                      {incident.status === 'aprovado' && (
+                      {canWrite && incident.status === 'aprovado' && (
                         <div className="mt-2 space-y-1">
                           <Button size="sm" variant="outline" className="w-full" onClick={() => handleMarkAsPaid(incident.id)}>
                             Marcar Pago

@@ -22,12 +22,14 @@ import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
+import { useCanWrite } from '@/hooks/useCanWrite';
 import { fuelingService } from '@/services';
 import type { Fueling, FuelConsumptionSummary } from '@/types';
 
 export default function CombustivelPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterBoat, setFilterBoat] = useState('');
+  const canWrite = useCanWrite();
   const { boats } = useBoats();
 
   const { data: fuelings, loading: loadingFuelings, error: errorFuelings, refetch: refetchFuelings } = useApi<Fueling[]>(
@@ -113,9 +115,9 @@ export default function CombustivelPage() {
           <h1 className="text-2xl font-bold">Combustível</h1>
           <p className="text-muted-foreground">Abastecimentos e consumo das embarcações</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        {canWrite && <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" /> Novo Abastecimento
-        </Button>
+        </Button>}
       </div>
 
       {/* Stats */}

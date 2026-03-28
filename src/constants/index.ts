@@ -63,6 +63,11 @@ export const SUBSCRIPTION_STATUS_META: Record<
   SubscriptionStatus,
   { label: string; className: string; cancelable: boolean }
 > = {
+  trialing: {
+    label: 'Trial',
+    className: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
+    cancelable: true,
+  },
   active: {
     label: 'Ativa',
     className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',

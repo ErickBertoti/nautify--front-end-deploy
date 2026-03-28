@@ -24,6 +24,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  Shield,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -160,6 +161,18 @@ export function Sidebar() {
       </nav>
 
       <div className="px-3 py-4 border-t border-white/10 space-y-1">
+        <Link
+          href="/termos"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+            pathname === '/termos' || pathname.startsWith('/termos/')
+              ? 'bg-nautify-700/50 text-white'
+              : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-white',
+          )}
+        >
+          <Shield className="h-5 w-5" />
+          Termos e Políticas
+        </Link>
         <Link
           href="/configuracoes"
           className={cn(
