@@ -30,6 +30,8 @@ import { Modal } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Input';
 import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { useToast } from '@/components/ui/Toast';
+import { getErrorMessage } from '@/lib/errors';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useCanWrite } from '@/hooks/useCanWrite';
@@ -42,6 +44,7 @@ export default function BoatDetailsPage() {
   const router = useRouter();
   const boatId = (params.id as string) || '';
   
+  const toast = useToast();
   const canWrite = useCanWrite();
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'financeiro' | 'historico'>('visao_geral');
   const [showEditModal, setShowEditModal] = useState(false);
@@ -108,7 +111,11 @@ export default function BoatDetailsPage() {
     setActionLoading(true);
     try {
       await boatService.delete(boatId);
+      setShowDeleteConfirm(false);
+      toast.success('Embarcação excluída com sucesso!');
       router.push('/embarcacoes');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao excluir embarcação.'));
     } finally {
       setActionLoading(false);
     }

@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toast';
 import { BOAT_TYPE_LABELS, SUBSCRIPTION_STATUS_META } from '@/constants';
 import { useApi } from '@/hooks/useApi';
 import { useCanWrite } from '@/hooks/useCanWrite';
+import { useUser } from '@/contexts/UserContext';
 import { getErrorMessage } from '@/lib/errors';
 import { boatService } from '@/services';
 import type { Boat } from '@/types';
@@ -27,6 +28,7 @@ export default function EmbarcacoesPage() {
   const router = useRouter();
   const toast = useToast();
   const canWrite = useCanWrite();
+  const { refetch: refetchUser } = useUser();
   const { data: boats, loading, error, refetch } = useApi<Boat[]>(() => boatService.list());
 
   const handleCreateBoat = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -52,6 +54,7 @@ export default function EmbarcacoesPage() {
       setShowAddModal(false);
       setBoatImage(null);
       refetch();
+      refetchUser();
       toast.success('Embarcação criada com sucesso!');
       router.push('/assinaturas');
     } catch (err) {
