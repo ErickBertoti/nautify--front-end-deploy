@@ -21,6 +21,7 @@ import { useToast } from '@/components/ui/Toast';
 import { SUBSCRIPTION_STATUS_META } from '@/constants';
 import { differenceInDays, parseISO } from 'date-fns';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors';
 import { useCanWrite } from '@/hooks/useCanWrite';
 import { subscriptionService } from '@/services';
 import type { Subscription } from '@/types';
@@ -209,8 +210,8 @@ export default function AssinaturasPage() {
         window.open(data.invoiceUrl, '_blank');
       }
       await loadSubscriptions({ silent: true });
-    } catch {
-      toast.error('Erro ao ativar assinatura');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao ativar assinatura'));
     } finally {
       setActivatingId(null);
     }
