@@ -356,7 +356,11 @@ export default function AssinaturasPage() {
                       </div>
                       <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobranca</p>
-                        <p className="mt-2 text-lg font-bold text-foreground">{subscription.billingType === 'UNDEFINED' ? 'A definir' : subscription.billingType}</p>
+                        <p className="mt-2 text-lg font-bold text-foreground">{subscription.billingType === 'CREDIT_CARD' ? 'Cartao de Credito'
+                          : subscription.billingType === 'BOLETO' ? 'Boleto'
+                          : subscription.billingType === 'PIX' ? 'Pix'
+                          : subscription.billingType === 'UNDEFINED' ? 'A definir'
+                          : subscription.billingType}</p>
                       </div>
                     </div>
 
