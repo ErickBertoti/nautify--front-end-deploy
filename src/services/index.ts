@@ -106,11 +106,17 @@ export const boatService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/boats/${id}`),
 
-  addMember: (boatId: string, data: { userId: string; role: string }) =>
-    api.post<ApiResponse<void>>(`/boats/${boatId}/members`, data),
+  inviteMember: (boatId: string, data: { email: string; role: string }) =>
+    api.post<ApiResponse<void>>(`/boats/${boatId}/invitations`, data),
 
   removeMember: (boatId: string, memberId: string) =>
     api.delete<ApiResponse<void>>(`/boats/${boatId}/members/${memberId}`),
+};
+
+export const boatInvitationService = {
+  accept: (id: string) => api.post<ApiResponse<{ id: string; status: string }>>(`/boat-invitations/${id}/accept`, {}),
+
+  reject: (id: string) => api.post<ApiResponse<{ id: string; status: string }>>(`/boat-invitations/${id}/reject`, {}),
 };
 
 // ============================================

@@ -336,8 +336,19 @@ export interface Document {
 }
 
 // --- Notificações ---
-export type NotificationType = 'manutencao' | 'financeiro' | 'documento' | 'sistema' | 'agenda';
+export type NotificationType = 'manutencao' | 'financeiro' | 'documento' | 'sistema' | 'agenda' | 'embarcacao';
 export type NotificationPriority = 'baixa' | 'media' | 'alta';
+
+export type BoatInvitationStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface NotificationInvitation {
+  id: string;
+  boatId: string;
+  boatName: string;
+  role: UserRole;
+  status: BoatInvitationStatus;
+  inviterName: string;
+}
 
 export interface Notification {
   id: string;
@@ -352,6 +363,7 @@ export interface Notification {
   relatedEntityId?: string;
   relatedEntityType?: string;
   createdAt: string;
+  invitation?: NotificationInvitation;
 }
 
 // --- Relatórios ---

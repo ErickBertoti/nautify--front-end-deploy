@@ -31,12 +31,13 @@ import { Input, Select } from '@/components/ui/Input';
 import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/ui/Toast';
+import { useUser } from '@/contexts/UserContext';
 import { getErrorMessage } from '@/lib/errors';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useCanWrite } from '@/hooks/useCanWrite';
 import { boatService, expenseService, tripService, incidentService } from '@/services';
-import type { Boat, BoatMember, Expense, Trip, Incident } from '@/types';
+import type { Boat, Expense, Trip, Incident } from '@/types';
 import { BOAT_TYPE_LABELS } from '@/constants';
 
 export default function BoatDetailsPage() {
@@ -46,6 +47,7 @@ export default function BoatDetailsPage() {
   
   const toast = useToast();
   const canWrite = useCanWrite();
+  const { hasBoatRole } = useUser();
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'financeiro' | 'historico'>('visao_geral');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -121,17 +123,21 @@ export default function BoatDetailsPage() {
     }
   };
 
-  const handleAddMember = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleInviteMember = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setActionLoading(true);
+    const form = e.currentTarget;
     try {
       const fd = new FormData(e.currentTarget);
-      await boatService.addMember(boatId, {
-        userId: fd.get('userId') as string,
+      await boatService.inviteMember(boatId, {
+        email: fd.get('email') as string,
         role: fd.get('role') as string,
       });
+      form.reset();
       setShowAddMemberModal(false);
-      refetchBoat();
+      toast.success('Convite enviado com sucesso.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao enviar convite.'));
     } finally {
       setActionLoading(false);
     }
@@ -156,6 +162,7 @@ export default function BoatDetailsPage() {
   }
 
   const activeMembers = boat.members?.filter(m => m.isActive && m.role !== 'marinheiro') || [];
+  const canInviteMembers = hasBoatRole(boatId, ['admin']);
 
   return (
     <div className="space-y-6 pb-12">
@@ -243,7 +250,7 @@ export default function BoatDetailsPage() {
            return (
              <button
                key={tab.id}
-               onClick={() => setActiveTab(tab.id as any)}
+               onClick={() => setActiveTab(tab.id as 'visao_geral' | 'financeiro' | 'historico')}
                className={cn(
                  "flex items-center gap-2 px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap border-b-2 relative top-[1px] cursor-pointer",
                  isActive 
@@ -280,9 +287,9 @@ export default function BoatDetailsPage() {
                       <Users className="h-5 w-5 text-nautify-600" />
                       Sócios e Participantes
                     </CardTitle>
-                    {canWrite && (
+                    {canInviteMembers && (
                       <Button size="sm" variant="outline" onClick={() => setShowAddMemberModal(true)}>
-                        <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        <Plus className="h-4 w-4 mr-1" /> Convidar
                       </Button>
                     )}
                   </CardHeader>
@@ -570,9 +577,22 @@ export default function BoatDetailsPage() {
       </Modal>
 
       {/* Add Member Modal */}
-      <Modal isOpen={showAddMemberModal} onClose={() => setShowAddMemberModal(false)} title="Adicionar Membro">
-        <form className="space-y-4 mt-2" onSubmit={handleAddMember}>
+      <Modal isOpen={showAddMemberModal && canInviteMembers} onClose={() => setShowAddMemberModal(false)} title="Convidar Membro">
+        <form className="space-y-4 mt-2" onSubmit={handleInviteMember}>
+          <div className="rounded-xl border border-nautify-200 bg-nautify-50/60 p-4 text-sm text-muted-foreground">
+            O convite serÃ¡ enviado para as notificaÃ§Ãµes do usuÃ¡rio. O e-mail precisa jÃ¡ existir no Nautify.
+          </div>
+          <Input
+            name="email"
+            type="email"
+            label="E-mail do usuÃ¡rio"
+            placeholder="nome@exemplo.com"
+            helperText="Use o mesmo e-mail cadastrado no app."
+            required
+          />
+          <fieldset disabled className="hidden">
           <Input name="userId" label="ID do Usuário (UUID)" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required />
+          </fieldset>
           <Select name="role" label="Perfil">
             <option value="socio">Sócio</option>
             <option value="admin">Administrador</option>
@@ -580,7 +600,7 @@ export default function BoatDetailsPage() {
           </Select>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setShowAddMemberModal(false)}>Cancelar</Button>
-            <Button type="submit" disabled={actionLoading}>{actionLoading ? 'Adicionando...' : 'Adicionar'}</Button>
+            <Button type="submit" disabled={actionLoading}>{actionLoading ? 'Enviando...' : 'Enviar convite'}</Button>
           </div>
         </form>
       </Modal>
