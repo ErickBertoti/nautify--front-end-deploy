@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Mail, Lock, Eye, EyeOff, Anchor, Navigation, Shield, Clock, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
@@ -10,16 +10,28 @@ import { authService } from '@/services';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [dismissUrlMessages, setDismissUrlMessages] = useState(false);
+
+  const urlError = searchParams.get('error') === 'auth-callback'
+    ? 'O link de acesso expirou ou e invalido.'
+    : '';
+  const urlInfoMessage = searchParams.get('message') === 'password-reset-success'
+    ? 'Senha alterada com sucesso. Entre com sua nova senha.'
+    : '';
+  const displayError = error || (!dismissUrlMessages ? urlError : '');
+  const displayInfoMessage = !dismissUrlMessages ? urlInfoMessage : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setDismissUrlMessages(true);
 
     try {
       const supabase = createClient();
@@ -269,7 +281,10 @@ export default function LoginPage() {
                     type="email"
                     placeholder="seu@email.com"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, email: e.target.value });
+                      setDismissUrlMessages(true);
+                    }}
                     onFocus={() => setFocusedField('email')}
                     onBlur={() => setFocusedField(null)}
                     required
@@ -303,7 +318,10 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, password: e.target.value });
+                      setDismissUrlMessages(true);
+                    }}
                     onFocus={() => setFocusedField('password')}
                     onBlur={() => setFocusedField(null)}
                     required
@@ -366,8 +384,12 @@ export default function LoginPage() {
               </div>
 
               {/* Error message */}
-              {error && (
-                <p className="text-sm text-red-400 text-center">{error}</p>
+              {displayError && (
+                <p className="text-sm text-red-400 text-center">{displayError}</p>
+              )}
+
+              {displayInfoMessage && (
+                <p className="text-sm text-emerald-400 text-center">{displayInfoMessage}</p>
               )}
 
               {/* Submit button - Gold gradient */}
