@@ -27,15 +27,15 @@ export function AdminMetricCard({
 
   return (
     <Card className="border-white/8 bg-white/4 before:hidden">
-      <CardContent className="p-5">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">{label}</p>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-white">{value}</p>
-            {helper && <p className="mt-2 text-sm text-slate-400">{helper}</p>}
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 sm:text-[11px] sm:tracking-[0.22em]">{label}</p>
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">{value}</p>
+            {helper && <p className="mt-2 text-xs leading-relaxed text-slate-400 sm:text-sm">{helper}</p>}
           </div>
-          <div className={cn('rounded-2xl bg-gradient-to-br p-3', accents[accent])}>
-            <Icon className="h-5 w-5" />
+          <div className={cn('shrink-0 rounded-2xl bg-gradient-to-br p-2.5 sm:p-3', accents[accent])}>
+            <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           </div>
         </div>
       </CardContent>
@@ -55,13 +55,13 @@ export function AdminSectionHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-      <div>
+    <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="min-w-0">
         <p className="text-[11px] uppercase tracking-[0.22em] text-amber-200/70">{eyebrow}</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">{title}</h2>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">{title}</h2>
         {description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">{actions}</div>}
     </div>
   );
 }

@@ -64,7 +64,7 @@ export default function AdminPlanosPage() {
         {(data ?? []).map((plan) => (
           <Card key={plan.id} className="border-white/8 bg-white/4 before:hidden">
             <CardHeader className="border-white/8">
-              <CardTitle className="flex items-center justify-between gap-4 text-white">
+              <CardTitle className="flex flex-col items-start gap-1 text-white sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <span>{plan.name}</span>
                 <span className="text-sm text-slate-400">{plan.code}</span>
               </CardTitle>
@@ -84,7 +84,7 @@ export default function AdminPlanosPage() {
                   <p className="mt-2 text-sm text-white">{formatDate(plan.createdAt)}</p>
                 </div>
               </div>
-              <Button variant="outline" onClick={() => openPlan(plan)}>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => openPlan(plan)}>
                 Editar preco
               </Button>
             </CardContent>
@@ -99,6 +99,16 @@ export default function AdminPlanosPage() {
         onClose={() => setSelected(null)}
         title={selected ? `Editar ${selected.name}` : undefined}
         description="A propagacao so altera assinaturas nao canceladas."
+        footer={(
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
+            <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setSelected(null)}>
+              Fechar
+            </Button>
+            <Button className="w-full sm:w-auto" isLoading={saving} onClick={handleSave}>
+              Aplicar
+            </Button>
+          </div>
+        )}
       >
         {selected && (
           <div className="space-y-4">
@@ -126,14 +136,6 @@ export default function AdminPlanosPage() {
               onChange={(event) => setReason(event.target.value)}
             />
             {resultMessage && <p className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-200">{resultMessage}</p>}
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setSelected(null)}>
-                Fechar
-              </Button>
-              <Button isLoading={saving} onClick={handleSave}>
-                Aplicar
-              </Button>
-            </div>
           </div>
         )}
       </Modal>

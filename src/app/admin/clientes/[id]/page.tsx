@@ -29,15 +29,15 @@ export default function AdminClienteDetailPage() {
         title={data.user.name}
         description="Perfil consolidado, memberships nauticos e estado de cobranca mais recente."
         actions={
-          <Link href="/admin/clientes">
-            <Button variant="outline">
+          <Link href="/admin/clientes" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <ArrowLeft className="h-4 w-4" /> Voltar
             </Button>
           </Link>
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <Card className="border-white/8 bg-white/4 before:hidden">
           <CardHeader className="border-white/8">
             <CardTitle className="flex items-center gap-2 text-white">
@@ -48,11 +48,11 @@ export default function AdminClienteDetailPage() {
           <CardContent className="grid gap-4 p-5 md:grid-cols-2">
             <div className="rounded-2xl border border-white/6 bg-slate-950/55 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Email</p>
-              <p className="mt-2 text-sm text-white">{data.user.email}</p>
+              <p className="mt-2 break-all text-sm text-white">{data.user.email}</p>
             </div>
             <div className="rounded-2xl border border-white/6 bg-slate-950/55 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Telefone</p>
-              <p className="mt-2 text-sm text-white">{data.user.phone || 'Nao informado'}</p>
+              <p className="mt-2 break-all text-sm text-white">{data.user.phone || 'Nao informado'}</p>
             </div>
             <div className="rounded-2xl border border-white/6 bg-slate-950/55 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Status</p>
@@ -78,14 +78,14 @@ export default function AdminClienteDetailPage() {
           <CardContent className="space-y-4 p-5">
             {data.latestSubscription ? (
               <>
-                <div className="flex items-center justify-between rounded-2xl border border-white/6 bg-slate-950/55 p-4">
-                  <div>
+                <div className="flex flex-col gap-3 rounded-2xl border border-white/6 bg-slate-950/55 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-sm text-white">{data.latestSubscription.boatName || data.latestSubscription.boatId}</p>
                     <p className="text-xs text-slate-400">Plano {data.latestSubscription.plan?.name || data.latestSubscription.planId}</p>
                   </div>
                   <SubscriptionStatusBadge status={data.latestSubscription.status} />
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-white/6 bg-slate-950/55 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Valor</p>
                     <p className="mt-2 text-lg font-semibold text-white">{formatCurrency(data.latestSubscription.value)}</p>
@@ -105,12 +105,12 @@ export default function AdminClienteDetailPage() {
 
       <Card className="border-white/8 bg-white/4 before:hidden">
         <CardHeader className="border-white/8">
-            <CardTitle className="flex items-center gap-2 text-white">
+          <CardTitle className="flex items-center gap-2 text-white">
             <Ship className="h-5 w-5 text-emerald-200" />
             Memberships nauticos
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-3">
+        <CardContent className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
           {data.user.memberships && data.user.memberships.length > 0 ? (
             data.user.memberships.map((membership) => (
               <div key={membership.boatId} className="rounded-2xl border border-white/6 bg-slate-950/55 p-4">

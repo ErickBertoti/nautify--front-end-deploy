@@ -98,7 +98,7 @@ export default function AdminClientesPage() {
       key: 'actions',
       header: 'Acoes',
       render: (row) => (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href={`/admin/clientes/${row.user.id}`}>
             <Button size="sm" variant="outline">
               <Eye className="h-3.5 w-3.5" /> Detalhe
@@ -147,9 +147,9 @@ export default function AdminClientesPage() {
               renderMobileCard={(row) => (
                 <div className="rounded-2xl border border-white/6 bg-slate-950/55 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium text-white">{row.user.name}</p>
-                      <p className="text-xs text-slate-400">{row.user.email}</p>
+                      <p className="break-all text-xs text-slate-400">{row.user.email}</p>
                     </div>
                     <AccountStatusBadge status={row.user.accountStatus} />
                   </div>
@@ -160,8 +160,8 @@ export default function AdminClientesPage() {
                   <p className="mt-3 text-xs text-slate-400">
                     Vinculos: {row.boatsAsMember} | Admin de embarcacao: {row.boatsOwned}
                   </p>
-                  <div className="mt-4 flex gap-2">
-                    <Link href={`/admin/clientes/${row.user.id}`} className="flex-1">
+                  <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Link href={`/admin/clientes/${row.user.id}`} className="w-full">
                       <Button size="sm" variant="outline" className="w-full">
                         <Eye className="h-3.5 w-3.5" /> Detalhe
                       </Button>
@@ -169,7 +169,7 @@ export default function AdminClientesPage() {
                     <Button
                       size="sm"
                       variant={row.user.accountStatus === 'active' ? 'destructive' : 'secondary'}
-                      className="flex-1"
+                      className="w-full"
                       onClick={() => {
                         setSelected(row);
                         setNextStatus(row.user.accountStatus === 'active' ? 'suspended' : 'active');
@@ -193,6 +193,21 @@ export default function AdminClientesPage() {
         }}
         title={nextStatus === 'suspended' ? 'Suspender conta' : 'Reativar conta'}
         description={selected ? `Usuario alvo: ${selected.user.name}` : undefined}
+        footer={(
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
+            <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setSelected(null)}>
+              Fechar
+            </Button>
+            <Button
+              variant={nextStatus === 'suspended' ? 'destructive' : 'secondary'}
+              className="w-full sm:w-auto"
+              isLoading={saving}
+              onClick={handleStatusUpdate}
+            >
+              Confirmar
+            </Button>
+          </div>
+        )}
       >
         <div className="space-y-4">
           <Select
@@ -216,14 +231,6 @@ export default function AdminClientesPage() {
               <p className="mt-1">Ultima assinatura: {selected.latestSubscription ? formatCurrency(selected.latestSubscription.value) : 'sem registro'}</p>
             </div>
           )}
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setSelected(null)}>
-              Fechar
-            </Button>
-            <Button variant={nextStatus === 'suspended' ? 'destructive' : 'secondary'} isLoading={saving} onClick={handleStatusUpdate}>
-              Confirmar
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

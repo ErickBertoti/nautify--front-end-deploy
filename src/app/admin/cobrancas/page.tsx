@@ -64,6 +64,7 @@ export default function AdminCobrancasPage() {
       } else if (action === 'reactivate') {
         await adminService.reactivateSubscription(selected.id);
       }
+
       setSelected(null);
       setAction(null);
       await subscriptionsApi.refetch();
@@ -178,6 +179,54 @@ export default function AdminCobrancasPage() {
               emptyTitle="Nenhuma assinatura encontrada"
               emptyDescription="Quando houver assinaturas elas aparecerao aqui."
               emptyIcon={CreditCard}
+              renderMobileCard={(row) => (
+                <div className="rounded-2xl border border-white/6 bg-slate-950/55 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-white">{row.ownerName}</p>
+                      <p className="break-all text-xs text-slate-400">{row.ownerEmail}</p>
+                    </div>
+                    <SubscriptionStatusBadge status={row.status} />
+                  </div>
+
+                  <p className="mt-3 truncate text-xs uppercase tracking-[0.16em] text-slate-500">
+                    {row.boatName || row.boatId}
+                  </p>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-white/6 bg-slate-900/70 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Plano</p>
+                      <p className="mt-1 text-sm text-white">{row.plan?.name || row.planId}</p>
+                      <p className="mt-1 text-xs text-slate-400">{formatCurrency(row.value)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/6 bg-slate-900/70 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Ultimo sync</p>
+                      <p className="mt-1 text-sm text-white">{row.latestPriceChange?.syncStatus || 'Sem historico'}</p>
+                      {row.latestPriceChange && (
+                        <p className="mt-1 text-xs text-slate-400">{formatDate(row.latestPriceChange.createdAt)}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button size="sm" variant="outline" className="w-full" onClick={() => { setSelected(row); setAction('price'); }}>
+                      <Tag className="h-3.5 w-3.5" /> Ajustar
+                    </Button>
+                    <Button size="sm" variant="secondary" className="w-full" onClick={() => { setSelected(row); setAction('plan'); setSelectedPlanId(row.planId); }}>
+                      <WalletCards className="h-3.5 w-3.5" /> Plano
+                    </Button>
+                    {row.status === 'canceled' ? (
+                      <Button size="sm" variant="secondary" className="w-full sm:col-span-2" onClick={() => { setSelected(row); setAction('reactivate'); }}>
+                        <RefreshCcw className="h-3.5 w-3.5" /> Reativar
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="destructive" className="w-full sm:col-span-2" onClick={() => { setSelected(row); setAction('cancel'); }}>
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             />
           )}
         </CardContent>
@@ -196,6 +245,22 @@ export default function AdminCobrancasPage() {
                 action === 'reactivate' ? 'Reativar assinatura' : undefined
         }
         description={selected ? `${selected.ownerName} • ${selected.boatName || selected.boatId}` : undefined}
+        footer={(
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
+            <Button variant="ghost" className="w-full sm:w-auto" onClick={() => { setSelected(null); setAction(null); }}>
+              Fechar
+            </Button>
+            <Button
+              variant={action === 'cancel' ? 'destructive' : 'secondary'}
+              className="w-full sm:w-auto"
+              isLoading={saving}
+              onClick={submitAction}
+              disabled={action === 'plan' && !selectedPlanId}
+            >
+              Confirmar
+            </Button>
+          </div>
+        )}
       >
         {selected && (
           <div className="space-y-4">
@@ -262,20 +327,6 @@ export default function AdminCobrancasPage() {
                 Esta operacao executa uma mutacao administrativa e fica registrada na trilha de auditoria.
               </p>
             )}
-
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => { setSelected(null); setAction(null); }}>
-                Fechar
-              </Button>
-              <Button
-                variant={action === 'cancel' ? 'destructive' : 'secondary'}
-                isLoading={saving}
-                onClick={submitAction}
-                disabled={action === 'plan' && !selectedPlanId}
-              >
-                Confirmar
-              </Button>
-            </div>
           </div>
         )}
       </Modal>

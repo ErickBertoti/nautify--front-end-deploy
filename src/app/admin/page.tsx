@@ -35,7 +35,7 @@ export default function AdminOverviewPage() {
         <AdminMetricCard label="Risco imediato" value={data.overdueSubscriptions} icon={TriangleAlert} accent="rose" helper={`${data.suspendedUsers} contas suspensas`} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)]">
         <Card className="border-white/8 bg-white/4 before:hidden">
           <CardHeader className="border-white/8">
             <CardTitle className="text-white">Ultimas acoes auditadas</CardTitle>
@@ -53,8 +53,8 @@ export default function AdminOverviewPage() {
                     <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{log.resourceType}</span>
                   </div>
                   <p className="mt-3 text-sm text-slate-200">
-                    Recurso <span className="font-medium">{log.resourceId}</span>
-                    {log.targetUserId ? <> para o usuario <span className="font-medium">{log.targetUserId}</span></> : null}
+                    Recurso <span className="break-all font-medium">{log.resourceId}</span>
+                    {log.targetUserId ? <> para o usuario <span className="break-all font-medium">{log.targetUserId}</span></> : null}
                   </p>
                   <p className="mt-2 text-xs text-slate-500">{formatDateTime(log.createdAt)}</p>
                 </div>
