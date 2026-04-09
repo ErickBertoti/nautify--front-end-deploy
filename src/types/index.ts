@@ -34,7 +34,11 @@ export interface User {
   birthDate?: string;
   address?: UserAddress;
   memberships?: UserMembership[];
+  accountStatus: 'active' | 'suspended';
+  authVersion: number;
+  isPlatformAdmin: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface BoatMembership {
@@ -447,6 +451,88 @@ export interface Subscription {
   trialEndsAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type BillingPromotionMode = 'fixed_price' | 'amount_off' | 'percent_off';
+export type SyncStatus = 'not_required' | 'pending' | 'synced' | 'failed';
+
+export interface BillingPromotion {
+  id: string;
+  code: string;
+  name: string;
+  mode: BillingPromotionMode;
+  value: number;
+  startsAt?: string;
+  endsAt?: string;
+  active: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionPriceChange {
+  id: string;
+  subscriptionId: string;
+  promotionId?: string;
+  source: 'manual_override' | 'promotion' | 'plan_propagation';
+  oldValue: number;
+  newValue: number;
+  reason: string;
+  effectiveFrom: string;
+  effectiveUntil?: string;
+  syncStatus: SyncStatus;
+  syncedAt?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  adminUserId: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  targetUserId?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AdminOverview {
+  totalUsers: number;
+  activeUsers: number;
+  suspendedUsers: number;
+  platformAdmins: number;
+  totalBoats: number;
+  trialSubscriptions: number;
+  overdueSubscriptions: number;
+  activeSubscriptions: number;
+  mrr: number;
+  activePromotions: number;
+  recentAuditLogs: AdminAuditLog[];
+}
+
+export interface AdminAccountSummary {
+  user: User;
+  boatsOwned: number;
+  boatsAsMember: number;
+  latestSubscription?: Subscription;
+}
+
+export interface AdminSubscriptionSummary extends Subscription {
+  ownerName: string;
+  ownerEmail: string;
+  latestPriceChange?: SubscriptionPriceChange;
+}
+
+export interface AdminPlanUpdateResult {
+  plan: Plan;
+  propagated: number;
+  failed: number;
+  failures: Array<{
+    subscriptionId: string;
+    error: string;
+  }>;
+  propagateToExisting: boolean;
 }
 
 // --- API ---

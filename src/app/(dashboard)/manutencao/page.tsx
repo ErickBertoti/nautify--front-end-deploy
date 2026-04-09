@@ -26,7 +26,7 @@ import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
 import { useCanWrite } from '@/hooks/useCanWrite';
 import { maintenanceService } from '@/services';
-import type { Maintenance, MaintenancePartHistory } from '@/types';
+import type { Maintenance, MaintenancePartHistory, PaginatedResponse } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -90,7 +90,8 @@ export default function ManutencaoPage() {
     () => maintenanceService.listParts({ boatId: partsBoatFilter || undefined }),
     [partsBoatFilter, activeTab],
   );
-  const parts: MaintenancePartHistory[] = (partsData as any)?.items ?? [];
+  const partsResponse = partsData as PaginatedResponse<MaintenancePartHistory> | null;
+  const parts: MaintenancePartHistory[] = partsResponse?.data ?? [];
 
   const agendadas = maintenances.filter((m) => m.status === 'agendada').length;
   const emAndamento = maintenances.filter((m) => m.status === 'em_andamento').length;

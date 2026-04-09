@@ -24,6 +24,13 @@ import type {
   DashboardStats,
   Plan,
   Subscription,
+  BillingPromotion,
+  SubscriptionPriceChange,
+  AdminAuditLog,
+  AdminOverview,
+  AdminAccountSummary,
+  AdminSubscriptionSummary,
+  AdminPlanUpdateResult,
   ApiResponse,
   PaginatedResponse,
 } from '@/types';
@@ -454,6 +461,60 @@ export const subscriptionService = {
   activate: (id: string) => api.post<ApiResponse<{ id: string; status: string }>>(`/subscriptions/${id}/activate`, {}),
 
   getPaymentLink: (id: string) => api.get<ApiResponse<{ invoiceUrl: string; bankSlipUrl: string; status: string; dueDate: string }>>(`/subscriptions/${id}/payment-link`),
+};
+
+export const adminService = {
+  getOverview: () => api.get<ApiResponse<AdminOverview>>('/admin/overview'),
+
+  listAccounts: () => api.get<ApiResponse<AdminAccountSummary[]>>('/admin/accounts'),
+
+  getAccount: (id: string) => api.get<ApiResponse<AdminAccountSummary>>(`/admin/accounts/${id}`),
+
+  updateAccountStatus: (id: string, data: { status: 'active' | 'suspended'; reason?: string }) =>
+    api.patch<ApiResponse<AdminAccountSummary>>(`/admin/accounts/${id}/status`, data),
+
+  listSubscriptions: () => api.get<ApiResponse<AdminSubscriptionSummary[]>>('/admin/subscriptions'),
+
+  updateSubscriptionPrice: (id: string, data: { value?: number; promotionId?: string; reason?: string }) =>
+    api.patch<ApiResponse<{ subscription: AdminSubscriptionSummary; change: SubscriptionPriceChange }>>(`/admin/subscriptions/${id}/price`, data),
+
+  updateSubscriptionPlan: (id: string, data: { planId: string; reason?: string }) =>
+    api.patch<ApiResponse<{ subscription: AdminSubscriptionSummary; change: SubscriptionPriceChange }>>(`/admin/subscriptions/${id}/plan`, data),
+
+  cancelSubscription: (id: string) =>
+    api.post<ApiResponse<{ id: string; status: string }>>(`/admin/subscriptions/${id}/cancel`, {}),
+
+  reactivateSubscription: (id: string) =>
+    api.post<ApiResponse<Subscription>>(`/admin/subscriptions/${id}/reactivate`, {}),
+
+  listPromotions: () => api.get<ApiResponse<BillingPromotion[]>>('/admin/promotions'),
+
+  createPromotion: (data: {
+    code: string;
+    name: string;
+    mode: BillingPromotion['mode'];
+    value: number;
+    startsAt?: string;
+    endsAt?: string;
+    active?: boolean;
+  }) => api.post<ApiResponse<BillingPromotion>>('/admin/promotions', data),
+
+  updatePromotion: (id: string, data: Partial<{
+    code: string;
+    name: string;
+    mode: BillingPromotion['mode'];
+    value: number;
+    startsAt: string;
+    endsAt: string;
+    clearStartsAt: boolean;
+    clearEndsAt: boolean;
+    active: boolean;
+  }>) => api.patch<ApiResponse<BillingPromotion>>(`/admin/promotions/${id}`, data),
+
+  updatePlan: (id: string, data: { price: number; propagateToExisting: boolean; reason?: string }) =>
+    api.patch<ApiResponse<AdminPlanUpdateResult>>(`/admin/plans/${id}`, data),
+
+  listAuditLogs: (limit = 50) => api.get<ApiResponse<AdminAuditLog[]>>(`/admin/audit-logs?limit=${limit}`),
 };
 
 // ============================================

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useState, useRef, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { X, CheckCircle2, AlertCircle, AlertTriangle, Info } from 'lucide-react';
@@ -120,9 +120,11 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
 // ============================================
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const portalTarget = useSyncExternalStore(
+    () => () => {},
+    () => document.body,
+    () => null
+  );
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -144,7 +146,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={ctx}>
       {children}
-      {mounted &&
+      {portalTarget &&
         createPortal(
           <div
             className="fixed bottom-4 right-4 z-[9999] flex flex-col-reverse gap-2 pointer-events-none"
@@ -156,7 +158,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               </div>
             ))}
           </div>,
-          document.body
+          portalTarget
         )}
     </ToastContext.Provider>
   );

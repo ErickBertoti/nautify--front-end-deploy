@@ -9,20 +9,20 @@ interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
     spotlightColor?: string;
 }
 
-export function SpotlightCard({ children, className, spotlightColor = 'rgba(255, 255, 255, 0.08)', ...props }: SpotlightCardProps) {
+export function SpotlightCard({ children, className, spotlightColor = 'rgba(255, 255, 255, 0.08)' }: SpotlightCardProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const [isFocused, setIsFocused] = useState(false);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [opacity, setOpacity] = useState(0);
 
     // Auto-detect theme for spotlight color to work well in both light and dark mode
-    const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
+    const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => (
+        typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+            ? 'dark'
+            : 'light'
+    ));
 
     useEffect(() => {
-        // Check if dark mode is active on document
-        const isDark = document.documentElement.classList.contains('dark');
-        setThemeMode(isDark ? 'dark' : 'light');
-
         // Very simple observer to change spotlight color based on theme
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -82,7 +82,6 @@ export function SpotlightCard({ children, className, spotlightColor = 'rgba(255,
             )}
             whileHover={{ y: -2 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            {...(props as any)}
         >
             <div
                 className="pointer-events-none absolute -inset-px opacity-0 transition duration-300 z-0"

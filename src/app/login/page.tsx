@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -8,7 +8,7 @@ import { Mail, Lock, Eye, EyeOff, Anchor, Navigation, Shield, Clock, ArrowRight 
 import { createClient } from '@/utils/supabase/client';
 import { authService } from '@/services';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
@@ -436,5 +436,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0c1322]" />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
