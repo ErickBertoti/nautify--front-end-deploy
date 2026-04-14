@@ -325,8 +325,8 @@ export default function ManutencaoPage() {
                         <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                           <td className="px-4 py-3 font-medium">{p.name}</td>
                           <td className="px-4 py-3">{p.quantity}</td>
-                          <td className="px-4 py-3">R$ {p.unitCost.toFixed(2)}</td>
-                          <td className="px-4 py-3 font-medium">R$ {p.totalCost.toFixed(2)}</td>
+                          <td className="px-4 py-3">{formatCurrency(p.unitCost)}</td>
+                          <td className="px-4 py-3 font-medium">{formatCurrency(p.totalCost)}</td>
                           <td className="px-4 py-3">{p.maintenanceTitle}</td>
                           <td className="px-4 py-3">{new Date(p.scheduledDate).toLocaleDateString('pt-BR')}</td>
                           <td className="px-4 py-3">{p.boatName}</td>
