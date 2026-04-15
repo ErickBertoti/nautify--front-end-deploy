@@ -305,7 +305,7 @@ export default function BoatDetailsPage() {
                                <p className="text-sm font-semibold text-foreground truncate">{member.user.name}</p>
                                <div className="flex items-center gap-2 mt-1">
                                  <Badge variant="secondary" className="text-[10px] py-0 px-2 uppercase tracking-wider bg-primary/10 text-primary border-0">
-                                   {member.role === 'admin' ? 'Admnistrador' : 'Sócio'}
+                                   {member.role === 'admin' ? 'Administrador' : 'Sócio'}
                                  </Badge>
                                  <span className="text-xs text-muted-foreground whitespace-nowrap">Desde {new Date(member.joinedAt).getFullYear()}</span>
                                </div>
@@ -579,20 +579,14 @@ export default function BoatDetailsPage() {
       {/* Add Member Modal */}
       <Modal isOpen={showAddMemberModal && canInviteMembers} onClose={() => setShowAddMemberModal(false)} title="Convidar Membro">
         <form className="space-y-4 mt-2" onSubmit={handleInviteMember}>
-          <div className="rounded-xl border border-nautify-200 bg-nautify-50/60 p-4 text-sm text-muted-foreground">
-            O convite serÃ¡ enviado para as notificaÃ§Ãµes do usuÃ¡rio. O e-mail precisa jÃ¡ existir no Nautify.
-          </div>
           <Input
             name="email"
             type="email"
-            label="E-mail do usuÃ¡rio"
+            label="E-mail do usuário"
             placeholder="nome@exemplo.com"
-            helperText="Use o mesmo e-mail cadastrado no app."
+            helperText="O e-mail já precisa existir no Nautify."
             required
           />
-          <fieldset disabled className="hidden">
-          <Input name="userId" label="ID do Usuário (UUID)" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required />
-          </fieldset>
           <Select name="role" label="Perfil">
             <option value="socio">Sócio</option>
             <option value="admin">Administrador</option>
