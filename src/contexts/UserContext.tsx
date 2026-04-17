@@ -7,7 +7,7 @@ import type { User, UserRole } from '@/types';
 interface UserContextValue {
   user: User | null;
   loading: boolean;
-  refetch: () => void;
+  refetch: () => Promise<void>;
   getRoleForBoat: (boatId: string) => UserRole | null;
   hasBoatRole: (boatId: string, roles: UserRole[]) => boolean;
 }
@@ -15,7 +15,7 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue>({
   user: null,
   loading: true,
-  refetch: () => {},
+  refetch: async () => {},
   getRoleForBoat: () => null,
   hasBoatRole: () => false,
 });
