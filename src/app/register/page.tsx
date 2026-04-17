@@ -8,7 +8,6 @@ import {
   User,
   MapPin,
   Lock,
-  FileText,
   Mail,
   Phone,
   Eye,
@@ -22,12 +21,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { GoogleAuthButton } from '@/components/ui/GoogleAuthButton';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { fetchCep } from '@/lib/cep';
 import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
+import { persistBackendToken } from '@/lib/auth-state';
 import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
 import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
+import { clearPendingRegistration, savePendingRegistration, startGoogleOAuth } from '@/lib/auth-flow';
 import { createClient } from '@/utils/supabase/client';
 import { authService } from '@/services';
 
@@ -85,9 +87,11 @@ export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [readDocs, setReadDocs] = useState({ uso: false, privacidade: false, cadastro: false });
+  const [skipReadingTerms, setSkipReadingTerms] = useState(false);
   const [openTerm, setOpenTerm] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -112,6 +116,8 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [isCepLoading, setIsCepLoading] = useState(false);
+  const hasReadAllDocs = readDocs.uso && readDocs.privacidade && readDocs.cadastro;
+  const canEnableTermsAcceptance = hasReadAllDocs || skipReadingTerms;
 
   async function handleCepChange(rawValue: string) {
     const masked = maskCEP(rawValue);
@@ -206,6 +212,30 @@ export default function RegisterPage() {
     setStep((prev) => Math.max(prev - 1, 1));
   }
 
+  function handleSkipReadingTermsChange(checked: boolean) {
+    setSkipReadingTerms(checked);
+    if (!checked && !hasReadAllDocs && form.acceptTerms) {
+      updateField('acceptTerms', false);
+    }
+  }
+
+  function handleOpenTerm(term: 'uso' | 'privacidade' | 'cadastro') {
+    setOpenTerm(term);
+    setReadDocs((prev) => ({ ...prev, [term]: true }));
+  }
+
+  async function handleGoogleSignIn() {
+    setIsGoogleLoading(true);
+    setSubmitError('');
+
+    try {
+      await startGoogleOAuth('/dashboard');
+    } catch (googleError) {
+      setSubmitError(googleError instanceof Error ? googleError.message : 'Erro ao iniciar cadastro com Google');
+      setIsGoogleLoading(false);
+    }
+  }
+
   async function handleSubmit() {
     if (!validateStep(4)) return;
     setIsLoading(true);
@@ -253,9 +283,11 @@ export default function RegisterPage() {
 
       if (!data.session) {
         // Salva dados do formulário para completar registro após verificação de email
-        localStorage.setItem('nautify_pending_registration', JSON.stringify({
+        savePendingRegistration({
           name: form.name,
+          email: form.email,
           phone: form.phone.replace(/\D/g, ''),
+          authProvider: 'password',
           documentType: form.documentType,
           document: form.document.replace(/\D/g, ''),
           birthDate: form.birthDate || undefined,
@@ -268,7 +300,7 @@ export default function RegisterPage() {
             city: form.city,
             state: form.state,
           },
-        }));
+        });
         setSubmitError('Verifique seu e-mail para confirmar o cadastro e depois faça login.');
         setIsLoading(false);
         return;
@@ -291,7 +323,8 @@ export default function RegisterPage() {
         },
       });
 
-      localStorage.setItem('nautify_token', res.data.token);
+      persistBackendToken(res.data.token);
+      clearPendingRegistration();
       router.push('/dashboard');
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Erro ao criar conta');
@@ -412,6 +445,20 @@ export default function RegisterPage() {
           </div>
 
           {/* ── Step 1: Dados Pessoais ── */}
+          <div className="mb-8 animate-fade-up" style={{ animationDelay: '100ms' }}>
+            <GoogleAuthButton
+              type="button"
+              onClick={handleGoogleSignIn}
+              isLoading={isGoogleLoading}
+              disabled={isLoading}
+            />
+            <div className="mt-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              ou preencha manualmente
+              <div className="h-px flex-1 bg-border" />
+            </div>
+          </div>
+
           {step === 1 && (
             <div key="step-1" className="space-y-5 animate-step-enter">
               <div>
@@ -678,37 +725,63 @@ export default function RegisterPage() {
                   <p className="mb-4">
                     Para utilizar a plataforma Nautify, você precisa concordar com nossos documentos legais que regulamentam o uso do sistema, a proteção dos seus dados e as responsabilidades envolvidas.
                   </p>
+                  <div className="rounded-lg border border-primary/15 bg-background/70 p-4 text-sm leading-relaxed text-muted-foreground">
+                    <p className="font-medium text-foreground">Recomendamos a leitura completa antes do aceite.</p>
+                    <p className="mt-1">
+                      O sistema registra apenas o seu aceite final aos documentos, não o conteúdo efetivamente lido.
+                    </p>
+                  </div>
                   
                   <div className="mt-6 pt-6 border-t border-input/50">
+                    <label className="flex items-start gap-4 rounded-lg p-3 -mx-3 transition-colors cursor-pointer hover:bg-background/80">
+                      <input
+                        type="checkbox"
+                        checked={skipReadingTerms}
+                        onChange={(e) => handleSkipReadingTermsChange(e.target.checked)}
+                        className="mt-0.5 h-5 w-5 rounded border-input accent-primary cursor-pointer shrink-0 transition-all focus:ring-2 focus:ring-primary/30"
+                      />
+                      <span className="text-sm text-foreground">
+                        <span className="block font-medium">Não quero ler os termos agora</span>
+                        <span className="mt-1 block text-xs text-amber-700 dark:text-amber-300">
+                          Não recomendamos seguir sem a leitura.
+                        </span>
+                      </span>
+                    </label>
+
                     <label className={cn(
                       "flex items-start gap-4 cursor-pointer group hover:bg-background/80 p-3 -mx-3 rounded-lg transition-colors",
-                      (!readDocs.uso || !readDocs.privacidade || !readDocs.cadastro) && "opacity-60 cursor-not-allowed hover:bg-transparent"
+                      !canEnableTermsAcceptance && "opacity-60 cursor-not-allowed hover:bg-transparent"
                     )}>
                       <input
                         type="checkbox"
                         checked={form.acceptTerms}
                         onChange={(e) => updateField('acceptTerms', e.target.checked)}
-                        disabled={!readDocs.uso || !readDocs.privacidade || !readDocs.cadastro}
+                        disabled={!canEnableTermsAcceptance}
                         className="mt-0.5 h-5 w-5 rounded border-input accent-primary cursor-pointer shrink-0 transition-all focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed"
                       />
                       <span className="text-sm text-foreground">
                         Li e aceito os{' '}
-                        <button type="button" onClick={(e) => { e.preventDefault(); setOpenTerm('uso'); setReadDocs(p => ({...p, uso: true})); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
+                        <button type="button" onClick={(e) => { e.preventDefault(); handleOpenTerm('uso'); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
                           Termos de Uso
                         </button>
                         , a{' '}
-                        <button type="button" onClick={(e) => { e.preventDefault(); setOpenTerm('privacidade'); setReadDocs(p => ({...p, privacidade: true})); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
+                        <button type="button" onClick={(e) => { e.preventDefault(); handleOpenTerm('privacidade'); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
                           Política de Privacidade
                         </button>{' '}
                         e o{' '}
-                        <button type="button" onClick={(e) => { e.preventDefault(); setOpenTerm('cadastro'); setReadDocs(p => ({...p, cadastro: true})); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
+                        <button type="button" onClick={(e) => { e.preventDefault(); handleOpenTerm('cadastro'); }} className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer">
                           Termo de Cadastro de Embarcação
                         </button>
                       </span>
                     </label>
-                    {(!readDocs.uso || !readDocs.privacidade || !readDocs.cadastro) && (
+                    {!hasReadAllDocs && !skipReadingTerms && (
                       <p className="text-xs text-muted-foreground mt-2 ml-1 animate-fade-in fade-in-50">
-                        * Clique nos três termos acima para ler e liberar a opção de aceite.
+                        * Leia os três documentos acima ou marque a opção para seguir sem leitura.
+                      </p>
+                    )}
+                    {skipReadingTerms && !hasReadAllDocs && (
+                      <p className="mt-2 ml-1 animate-fade-in text-xs text-amber-700 dark:text-amber-300">
+                        Você pode continuar sem abrir os documentos, mas seguimos recomendando a leitura antes do aceite.
                       </p>
                     )}
                     {errors.acceptTerms && (

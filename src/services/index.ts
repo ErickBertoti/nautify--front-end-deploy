@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { clearSupabaseAndBackendAuth } from '@/lib/auth-state';
 import type {
   User,
   UserAddress,
@@ -53,6 +54,13 @@ export const authService = {
     address?: UserAddress;
   }) => api.post<ApiResponse<User>>('/auth/register', data),
 
+  supabaseExchange: (supabaseToken: string) =>
+    api.post<ApiResponse<{ token: string; user: User }>>(
+      '/auth/supabase-exchange',
+      {},
+      { Authorization: `Bearer ${supabaseToken}` },
+    ),
+
   supabaseLogin: (supabaseToken: string) =>
     api.post<ApiResponse<{ token: string; user: User }>>(
       '/auth/supabase-login',
@@ -83,10 +91,7 @@ export const authService = {
     api.post<ApiResponse<{ emailAvailable: boolean; documentAvailable: boolean }>>('/auth/check-availability', data),
 
   logout: async () => {
-    const { createClient } = await import('@/utils/supabase/client');
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    localStorage.removeItem('nautify_token');
+    await clearSupabaseAndBackendAuth();
     window.location.href = '/login';
   },
 };

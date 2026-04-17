@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
+import { clearClientAuth } from '@/lib/auth-state';
 import { createClient } from '@/utils/supabase/client';
 
 function translateResetPasswordError(message: string) {
@@ -114,7 +115,7 @@ export default function ResetPasswordPage() {
       }
 
       await supabase.auth.signOut();
-      localStorage.removeItem('nautify_token');
+      clearClientAuth();
       router.replace('/login?message=password-reset-success');
     } finally {
       setIsLoading(false);
