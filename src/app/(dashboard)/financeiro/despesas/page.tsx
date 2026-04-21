@@ -20,7 +20,9 @@ import { getErrorMessage } from '@/lib/errors';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { Receipt } from 'lucide-react';
 import { expenseService } from '@/services';
 import type { Expense } from '@/types';
 
@@ -48,12 +50,13 @@ export default function DespesasPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const toast = useToast();
-  const canWrite = useCanWrite();
+  const canView = useHasAnyFinancialBoat();
+  const canWrite = canView;
   const { boats } = useBoats();
 
   const { data: expenses, loading, error, refetch } = useApi<Expense[]>(
-    () => expenseService.list(),
-    [],
+    () => canView ? expenseService.list() : Promise.resolve({ data: [] as Expense[] }),
+    [canView],
   );
 
   const expenseList = expenses ?? [];
@@ -98,6 +101,16 @@ export default function DespesasPage() {
     } catch (err) {
       toast.error(getErrorMessage(err, 'Erro ao marcar despesa como paga.'));
     }
+  }
+
+  if (!canView) {
+    return (
+      <EmptyState
+        icon={Receipt}
+        title="Acesso restrito"
+        description="Apenas administradores e sócios podem visualizar as despesas."
+      />
+    );
   }
 
   if (loading) {

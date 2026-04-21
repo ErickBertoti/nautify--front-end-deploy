@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { authService } from '@/services';
+import { useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
 import Image from 'next/image';
 import {
   LayoutDashboard,
@@ -33,6 +34,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
+  financialOnly?: boolean;
 }
 
 interface NavGroup {
@@ -51,10 +53,10 @@ const navGroups: NavGroup[] = [
   {
     section: 'Financeiro',
     items: [
-      { label: 'Receitas', href: '/financeiro/receitas', icon: TrendingUp },
-      { label: 'Despesas', href: '/financeiro/despesas', icon: Receipt },
-      { label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa', icon: ArrowDownUp },
-      { label: 'Histórico', href: '/financeiro/historico', icon: History },
+      { label: 'Receitas', href: '/financeiro/receitas', icon: TrendingUp, financialOnly: true },
+      { label: 'Despesas', href: '/financeiro/despesas', icon: Receipt, financialOnly: true },
+      { label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa', icon: ArrowDownUp, financialOnly: true },
+      { label: 'Histórico', href: '/financeiro/historico', icon: History, financialOnly: true },
       { label: 'Assinaturas', href: '/assinaturas', icon: CreditCard },
     ],
   },
@@ -70,7 +72,7 @@ const navGroups: NavGroup[] = [
     section: 'Gestão',
     items: [
       { label: 'Manutenção', href: '/manutencao', icon: Wrench },
-      { label: 'Sócios', href: '/socios', icon: Users },
+      { label: 'Sócios', href: '/socios', icon: Users, financialOnly: true },
       { label: 'Documentos', href: '/documentos', icon: FileText },
     ],
   },
@@ -88,9 +90,17 @@ export const allNavItems = navGroups.flatMap((group) => group.items);
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const canSeeFinancial = useHasAnyFinancialBoat();
 
   const toggle = (section: string) =>
     setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
+
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.financialOnly || canSeeFinancial),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden lg:flex h-screen w-64 flex-col bg-sidebar-bg/95 backdrop-blur-md border-r border-white/5 text-sidebar-foreground transition-all duration-300">
@@ -103,7 +113,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto scrollbar-thin">
-        {navGroups.map((group) => {
+        {visibleGroups.map((group) => {
           const isCollapsed = collapsed[group.section];
           const hasActive = group.items.some(
             (item) => pathname === item.href || pathname.startsWith(item.href + '/'),

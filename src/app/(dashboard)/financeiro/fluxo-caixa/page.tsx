@@ -18,6 +18,9 @@ import { Select } from '@/components/ui/Input';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
+import { useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { Wallet } from 'lucide-react';
 import { cashFlowService } from '@/services';
 import type { CashFlowSummary, CashFlowEntry } from '@/types';
 
@@ -43,6 +46,7 @@ function getLastSixMonths(): { value: string; label: string }[] {
 }
 
 export default function FluxoCaixaPage() {
+  const canView = useHasAnyFinancialBoat();
   const now = new Date();
   const defaultPeriod = `${String(now.getMonth() + 1).padStart(2, '0')}${now.getFullYear()}`;
   const [period, setPeriod] = useState(defaultPeriod);
@@ -51,13 +55,17 @@ export default function FluxoCaixaPage() {
   const monthOptions = getLastSixMonths();
 
   const { data: summary, loading: loadingSummary, error: errorSummary, refetch: refetchSummary } = useApi<CashFlowSummary>(
-    () => cashFlowService.getSummary({ startDate, endDate }),
-    [period],
+    () => canView
+      ? cashFlowService.getSummary({ startDate, endDate })
+      : Promise.resolve({ data: null as unknown as CashFlowSummary }),
+    [period, canView],
   );
 
   const { data: entries, loading: loadingEntries, error: errorEntries, refetch: refetchEntries } = useApi<CashFlowEntry[]>(
-    () => cashFlowService.listEntries({ startDate, endDate }),
-    [period],
+    () => canView
+      ? cashFlowService.listEntries({ startDate, endDate })
+      : Promise.resolve({ data: [] as CashFlowEntry[] }),
+    [period, canView],
   );
 
   const loading = loadingSummary || loadingEntries;
@@ -76,6 +84,16 @@ export default function FluxoCaixaPage() {
     },
     []
   );
+
+  if (!canView) {
+    return (
+      <EmptyState
+        icon={Wallet}
+        title="Acesso restrito"
+        description="Apenas administradores e sócios podem visualizar o fluxo de caixa."
+      />
+    );
+  }
 
   if (loading) {
     return (

@@ -21,7 +21,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats, useBoatMembers } from '@/hooks/useEntityOptions';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useHasAnyBoat } from '@/hooks/useBoatPermissions';
 import { tripService } from '@/services';
 import type { Trip } from '@/types';
 
@@ -51,7 +51,7 @@ export default function SaidasPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [selectedBoatId, setSelectedBoatId] = useState('');
-  const canWrite = useCanWrite();
+  const canWrite = useHasAnyBoat();
   const { boats } = useBoats();
   const { socios, sailors } = useBoatMembers(selectedBoatId);
 
