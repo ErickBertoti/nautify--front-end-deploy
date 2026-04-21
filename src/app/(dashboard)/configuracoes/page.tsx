@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   User,
   Mail,
-  Phone,
   MapPin,
   Hash,
   Calendar,
@@ -15,17 +14,24 @@ import {
   Camera,
   Shield,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { AvatarCropModal } from '@/components/shared/AvatarCropModal';
 import { fetchCep } from '@/lib/cep';
 import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
-import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
+import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone } from '@/lib/validators';
 import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 import { useToast } from '@/components/ui/Toast';
 import { useApi } from '@/hooks/useApi';
+import { useUser } from '@/contexts/UserContext';
+import { getErrorMessage } from '@/lib/errors';
+import { AVATAR_ACCEPT_ATTRIBUTE, validateAvatarFile } from '@/lib/avatar';
+import { deleteFile, getStoragePathFromPublicUrl, uploadFileAtPath } from '@/lib/storage';
 import { authService } from '@/services';
 import type { User as UserType } from '@/types';
 
@@ -58,15 +64,18 @@ function maskCEP(value: string) {
     .replace(/(\d{5})(\d)/, '$1-$2');
 }
 
-function maskPhone(value: string) {
-  return value
-    .replace(/\D/g, '')
-    .slice(0, 11)
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{5})(\d)/, '$1-$2');
-}
-
 type TabKey = 'pessoal' | 'endereco' | 'seguranca';
+const AVATAR_FOLDER = 'avatars';
+
+function getManagedAvatarPath(publicUrl: string): string | null {
+  const path = getStoragePathFromPublicUrl(publicUrl);
+
+  if (!path?.startsWith(`${AVATAR_FOLDER}/`)) {
+    return null;
+  }
+
+  return path;
+}
 
 // ============================================
 // Component
@@ -74,9 +83,15 @@ type TabKey = 'pessoal' | 'endereco' | 'seguranca';
 export default function ConfiguracoesPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('pessoal');
   const [isSaving, setIsSaving] = useState(false);
+  const [isAvatarSaving, setIsAvatarSaving] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [selectedAvatarPreviewUrl, setSelectedAvatarPreviewUrl] = useState<string | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const { refetch: refetchUser } = useUser();
 
   const { data: userData, loading, error, refetch } = useApi<UserType>(
     () => authService.me(),
@@ -100,6 +115,7 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     if (userData) {
+      setAvatarUrl(userData.avatarUrl || '');
       setProfile({
         name: userData.name || '',
         email: userData.email || '',
@@ -118,6 +134,14 @@ export default function ConfiguracoesPage() {
     }
   }, [userData]);
 
+  useEffect(() => {
+    return () => {
+      if (selectedAvatarPreviewUrl) {
+        URL.revokeObjectURL(selectedAvatarPreviewUrl);
+      }
+    };
+  }, [selectedAvatarPreviewUrl]);
+
   const [passwords, setPasswords] = useState({
     current: '',
     newPassword: '',
@@ -127,6 +151,145 @@ export default function ConfiguracoesPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [isCepLoading, setIsCepLoading] = useState(false);
+
+  function buildProfilePayload(nextAvatarUrl = avatarUrl) {
+    return {
+      name: profile.name,
+      phone: profile.phone,
+      avatarUrl: nextAvatarUrl,
+      documentType: profile.documentType,
+      document: profile.document,
+      birthDate: profile.birthDate,
+      address: {
+        cep: profile.cep,
+        street: profile.street,
+        number: profile.number,
+        complement: profile.complement,
+        neighborhood: profile.neighborhood,
+        city: profile.city,
+        state: profile.state,
+      },
+    };
+  }
+
+  function resetAvatarSelection() {
+    if (selectedAvatarPreviewUrl) {
+      URL.revokeObjectURL(selectedAvatarPreviewUrl);
+    }
+
+    setSelectedAvatarPreviewUrl(null);
+    setIsCropModalOpen(false);
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
+    }
+  }
+
+  async function refreshProfileViews() {
+    await Promise.all([refetch(), refetchUser()]);
+  }
+
+  async function safeDeleteAvatarByPath(path: string | null) {
+    if (!path) {
+      return;
+    }
+
+    try {
+      await deleteFile(path);
+    } catch {
+      // Best effort cleanup only.
+    }
+  }
+
+  async function cleanupPreviousAvatar(previousAvatarUrl: string) {
+    await safeDeleteAvatarByPath(getManagedAvatarPath(previousAvatarUrl));
+  }
+
+  function handleSelectAvatar() {
+    if (isAvatarSaving) {
+      return;
+    }
+
+    avatarInputRef.current?.click();
+  }
+
+  function handleAvatarFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const validationError = validateAvatarFile(file);
+    if (validationError) {
+      toast.error(validationError);
+      event.target.value = '';
+      return;
+    }
+
+    if (selectedAvatarPreviewUrl) {
+      URL.revokeObjectURL(selectedAvatarPreviewUrl);
+    }
+
+    setSelectedAvatarPreviewUrl(URL.createObjectURL(file));
+    setIsCropModalOpen(true);
+  }
+
+  async function handleAvatarConfirm(croppedBlob: Blob) {
+    if (!userData) {
+      toast.error('Nao foi possivel identificar o usuario atual.');
+      return;
+    }
+
+    const previousAvatarUrl = avatarUrl;
+    const newAvatarPath = `${AVATAR_FOLDER}/${userData.id}/${Date.now()}-${crypto.randomUUID()}.jpg`;
+    let uploadedPath: string | null = null;
+
+    setIsAvatarSaving(true);
+
+    try {
+      const avatarFile = new File([croppedBlob], `avatar-${userData.id}.jpg`, {
+        type: 'image/jpeg',
+      });
+      const uploadResult = await uploadFileAtPath(newAvatarPath, avatarFile, {
+        contentType: avatarFile.type,
+      });
+      uploadedPath = uploadResult.path;
+
+      await authService.updateProfile(buildProfilePayload(uploadResult.url));
+      setAvatarUrl(uploadResult.url);
+      resetAvatarSelection();
+      await refreshProfileViews();
+      toast.success('Foto de perfil atualizada com sucesso!');
+
+      void cleanupPreviousAvatar(previousAvatarUrl);
+    } catch (err) {
+      await safeDeleteAvatarByPath(uploadedPath);
+      toast.error(getErrorMessage(err, 'Erro ao atualizar foto de perfil.'));
+    } finally {
+      setIsAvatarSaving(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    if (!avatarUrl) {
+      return;
+    }
+
+    const previousAvatarUrl = avatarUrl;
+    setIsAvatarSaving(true);
+
+    try {
+      await authService.updateProfile(buildProfilePayload(''));
+      setAvatarUrl('');
+      await refreshProfileViews();
+      toast.success('Foto de perfil removida com sucesso!');
+
+      void cleanupPreviousAvatar(previousAvatarUrl);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao remover foto de perfil.'));
+    } finally {
+      setIsAvatarSaving(false);
+    }
+  }
 
   async function handleCepChange(rawValue: string) {
     const masked = maskCEP(rawValue);
@@ -216,24 +379,8 @@ export default function ConfiguracoesPage() {
     setIsSaving(true);
     try {
       if (activeTab === 'pessoal' || activeTab === 'endereco') {
-        await authService.updateProfile({
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone,
-          documentType: profile.documentType,
-          document: profile.document,
-          birthDate: profile.birthDate,
-          address: {
-            cep: profile.cep,
-            street: profile.street,
-            number: profile.number,
-            complement: profile.complement,
-            neighborhood: profile.neighborhood,
-            city: profile.city,
-            state: profile.state,
-          },
-        });
-        refetch();
+        await authService.updateProfile(buildProfilePayload());
+        await refreshProfileViews();
       }
       toast.success('Alterações salvas com sucesso!');
     } catch {
@@ -281,12 +428,28 @@ export default function ConfiguracoesPage() {
         <CardContent className="py-6">
           <div className="flex flex-col sm:flex-row items-center gap-5">
             <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-nautify-100 flex items-center justify-center">
-                <User className="h-10 w-10 text-nautify-700" />
-              </div>
-              <button className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors cursor-pointer">
+              <UserAvatar
+                src={avatarUrl}
+                name={profile.name}
+                size={80}
+                className="shadow-sm ring-4 ring-background"
+              />
+              <button
+                type="button"
+                onClick={handleSelectAvatar}
+                disabled={isAvatarSaving}
+                className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="Alterar foto de perfil"
+              >
                 <Camera className="h-4 w-4" />
               </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept={AVATAR_ACCEPT_ATTRIBUTE}
+                className="hidden"
+                onChange={handleAvatarFileChange}
+              />
             </div>
             <div className="text-center sm:text-left">
               <h2 className="text-xl font-bold text-foreground">{profile.name}</h2>
@@ -299,6 +462,37 @@ export default function ConfiguracoesPage() {
                 <span className="text-xs text-muted-foreground">
                   {profile.documentType.toUpperCase()}: {profile.document}
                 </span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSelectAvatar}
+                  disabled={isAvatarSaving}
+                >
+                  <Camera className="h-4 w-4" />
+                  {avatarUrl ? 'Trocar foto' : 'Adicionar foto'}
+                </Button>
+                {avatarUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleRemoveAvatar}
+                    disabled={isAvatarSaving}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Remover foto
+                  </Button>
+                )}
+                {isAvatarSaving && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Atualizando foto...
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -621,6 +815,14 @@ export default function ConfiguracoesPage() {
           </CardContent>
         </Card>
       )}
+
+      <AvatarCropModal
+        isOpen={isCropModalOpen}
+        imageUrl={selectedAvatarPreviewUrl}
+        isSubmitting={isAvatarSaving}
+        onClose={resetAvatarSelection}
+        onConfirm={handleAvatarConfirm}
+      />
     </div>
   );
 }

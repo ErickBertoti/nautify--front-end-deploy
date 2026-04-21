@@ -15,6 +15,7 @@ import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { notificationService } from '@/services';
 import type { Notification } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 import {
   Menu,
   X,
@@ -268,9 +269,7 @@ export function Header() {
               }}
               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-full bg-nautify-100 flex items-center justify-center">
-                <User className="h-4 w-4 text-nautify-700" />
-              </div>
+              <UserAvatar src={user?.avatarUrl} name={user?.name} size={32} />
               <span className="hidden sm:block text-sm font-medium">{user?.name?.split(' ')[0] || '...'}</span>
               <ChevronDown
                 className={cn(
@@ -282,9 +281,12 @@ export function Header() {
 
             {userMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-border bg-card shadow-xl animate-dropdown-in origin-top-right z-50">
-                <div className="px-4 py-3 border-b border-border">
-                  <p className="text-sm font-semibold text-foreground">{user?.name || '...'}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.email || '...'}</p>
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+                  <UserAvatar src={user?.avatarUrl} name={user?.name} size={40} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{user?.name || '...'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email || '...'}</p>
+                  </div>
                 </div>
                 <div className="py-1.5">
                   <Link

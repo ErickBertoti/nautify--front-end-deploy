@@ -11,7 +11,7 @@ interface UseApiResult<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 }
 
 export function useApi<T>(
