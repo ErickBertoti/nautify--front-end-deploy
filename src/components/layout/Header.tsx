@@ -9,6 +9,7 @@ import { allNavItems } from './Sidebar';
 import Image from 'next/image';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUser } from '@/contexts/UserContext';
+import { useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
 import { useApi } from '@/hooks/useApi';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { notificationService } from '@/services';
@@ -45,7 +46,7 @@ import {
 
 interface NavGroup {
   section: string;
-  items: { label: string; href: string; icon: LucideIcon }[];
+  items: { label: string; href: string; icon: LucideIcon; financialOnly?: boolean }[];
 }
 
 const mobileNavGroups: NavGroup[] = [
@@ -59,10 +60,10 @@ const mobileNavGroups: NavGroup[] = [
   {
     section: 'Financeiro',
     items: [
-      { label: 'Receitas', href: '/financeiro/receitas', icon: TrendingUp },
-      { label: 'Despesas', href: '/financeiro/despesas', icon: Receipt },
-      { label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa', icon: ArrowDownUp },
-      { label: 'Histórico', href: '/financeiro/historico', icon: History },
+      { label: 'Receitas', href: '/financeiro/receitas', icon: TrendingUp, financialOnly: true },
+      { label: 'Despesas', href: '/financeiro/despesas', icon: Receipt, financialOnly: true },
+      { label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa', icon: ArrowDownUp, financialOnly: true },
+      { label: 'Histórico', href: '/financeiro/historico', icon: History, financialOnly: true },
       { label: 'Assinaturas', href: '/assinaturas', icon: CreditCard },
     ],
   },
@@ -78,7 +79,7 @@ const mobileNavGroups: NavGroup[] = [
     section: 'Gestão',
     items: [
       { label: 'Manutenção', href: '/manutencao', icon: Wrench },
-      { label: 'Sócios', href: '/socios', icon: Users },
+      { label: 'Sócios', href: '/socios', icon: Users, financialOnly: true },
       { label: 'Documentos', href: '/documentos', icon: FileText },
     ],
   },
@@ -101,6 +102,13 @@ export function Header() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { user } = useUser();
+  const canSeeFinancial = useHasAnyFinancialBoat();
+  const visibleMobileGroups = mobileNavGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.financialOnly || canSeeFinancial),
+    }))
+    .filter((group) => group.items.length > 0);
   const { data: notifications } = useApi<Notification[]>(() => notificationService.list());
   const { unreadCount: realtimeUnreadCount } = useRealtimeNotifications({ userId: user?.id });
 
@@ -337,7 +345,7 @@ export function Header() {
             </div>
 
             <nav className="px-3 py-4 space-y-4 flex-1 overflow-y-auto">
-              {mobileNavGroups.map((group) => (
+              {visibleMobileGroups.map((group) => (
                 <div key={group.section}>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted px-3 mb-1">
                     {group.section}

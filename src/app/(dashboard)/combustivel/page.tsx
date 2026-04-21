@@ -21,16 +21,19 @@ import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
-import { useBoats } from '@/hooks/useEntityOptions';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useBoats, useBoatMembers } from '@/hooks/useEntityOptions';
+import { useHasAnyBoat } from '@/hooks/useBoatPermissions';
 import { fuelingService } from '@/services';
 import type { Fueling, FuelConsumptionSummary } from '@/types';
 
 export default function CombustivelPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterBoat, setFilterBoat] = useState('');
-  const canWrite = useCanWrite();
+  const [formBoatId, setFormBoatId] = useState('');
+  const [formAssociation, setFormAssociation] = useState<'socio' | 'teste'>('socio');
+  const canWrite = useHasAnyBoat();
   const { boats } = useBoats();
+  const { socios: formSocios } = useBoatMembers(formBoatId);
 
   const { data: fuelings, loading: loadingFuelings, error: errorFuelings, refetch: refetchFuelings } = useApi<Fueling[]>(
     () => fuelingService.list(),
@@ -96,15 +99,24 @@ export default function CombustivelPage() {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
+    const associationType = formData.get('associationType') as Fueling['associationType'];
+    const associatedUserId = (formData.get('associatedUserId') as string) || undefined;
+    if (associationType === 'socio' && !associatedUserId) {
+      alert('Selecione o sócio responsável pelo abastecimento.');
+      return;
+    }
     await fuelingService.create({
       boatId: formData.get('boatId') as string,
       liters: Number(formData.get('liters')),
       totalValue: Number(formData.get('totalValue')),
       date: formData.get('date') as string,
-      associationType: formData.get('associationType') as Fueling['associationType'],
+      associationType,
+      associatedUserId: associationType === 'socio' ? associatedUserId : undefined,
       observations: (formData.get('observations') as string) || undefined,
     });
     setIsModalOpen(false);
+    setFormBoatId('');
+    setFormAssociation('socio');
     refetch();
   };
 
@@ -242,7 +254,13 @@ export default function CombustivelPage() {
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Abastecimento">
         <form className="space-y-4" onSubmit={handleCreate}>
-          <Select label="Embarcação" name="boatId">
+          <Select
+            label="Embarcação"
+            name="boatId"
+            value={formBoatId}
+            onChange={(e) => setFormBoatId(e.target.value)}
+            required
+          >
             <option value="">Selecione...</option>
             {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </Select>
@@ -252,11 +270,36 @@ export default function CombustivelPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Data" name="date" type="date" required />
-            <Select label="Associação" name="associationType">
+            <Select
+              label="Associação"
+              name="associationType"
+              value={formAssociation}
+              onChange={(e) => setFormAssociation(e.target.value as 'socio' | 'teste')}
+            >
               <option value="socio">Sócio</option>
               <option value="teste">Teste</option>
             </Select>
           </div>
+          {formAssociation === 'socio' && (
+            <div className="space-y-1">
+              <Select
+                label="Sócio responsável"
+                name="associatedUserId"
+                required
+                disabled={!formBoatId}
+              >
+                <option value="">Selecione...</option>
+                {formSocios.map((s) => (
+                  <option key={s.user.id} value={s.user.id}>
+                    {s.user.name} {s.role === 'admin' ? '(Admin)' : ''}
+                  </option>
+                ))}
+              </Select>
+              {!formBoatId && (
+                <p className="text-xs text-muted-foreground">Selecione a embarcação para listar os sócios.</p>
+              )}
+            </div>
+          )}
           <Input label="Observações" name="observations" placeholder="Opcional" />
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>

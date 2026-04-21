@@ -24,7 +24,7 @@ import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useHasAnyBoat } from '@/hooks/useBoatPermissions';
 import { maintenanceService } from '@/services';
 import type { Maintenance, MaintenancePartHistory, PaginatedResponse } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -76,7 +76,7 @@ export default function ManutencaoPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [activeTab, setActiveTab] = useState<'manutencoes' | 'pecas'>('manutencoes');
   const [partsBoatFilter, setPartsBoatFilter] = useState('');
-  const canWrite = useCanWrite();
+  const canWrite = useHasAnyBoat();
   const { boats } = useBoats();
 
   const { data: paginatedData, loading, error, refetch } = useApi(

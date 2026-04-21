@@ -26,7 +26,7 @@ import { useToast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { useApi } from '@/hooks/useApi';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useHasAnyBoat } from '@/hooks/useBoatPermissions';
 import { useBoats } from '@/hooks/useEntityOptions';
 import { calendarService } from '@/services';
 import type { CalendarEvent } from '@/types';
@@ -62,7 +62,7 @@ export default function AgendaPage() {
   const [importedEvents, setImportedEvents] = useState<Array<{ title: string; type: string; startDate: string; endDate: string; boatId: string; description: string }>>([]);
   const [importing, setImporting] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const canWrite = useCanWrite();
+  const canWrite = useHasAnyBoat();
   const toast = useToast();
   const { boats } = useBoats();
   const [currentYear] = useState(2026);

@@ -31,11 +31,10 @@ import { Input, Select } from '@/components/ui/Input';
 import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/ui/Toast';
-import { useUser } from '@/contexts/UserContext';
 import { getErrorMessage } from '@/lib/errors';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useBoatPermissions } from '@/hooks/useBoatPermissions';
 import { boatService, expenseService, tripService, incidentService } from '@/services';
 import type { Boat, Expense, Trip, Incident } from '@/types';
 import { BOAT_TYPE_LABELS } from '@/constants';
@@ -46,8 +45,7 @@ export default function BoatDetailsPage() {
   const boatId = (params.id as string) || '';
   
   const toast = useToast();
-  const canWrite = useCanWrite();
-  const { hasBoatRole } = useUser();
+  const { canManageFinancials, canDeleteBoat, canManagePartners } = useBoatPermissions(boatId);
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'financeiro' | 'historico'>('visao_geral');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -162,7 +160,7 @@ export default function BoatDetailsPage() {
   }
 
   const activeMembers = boat.members?.filter(m => m.isActive && m.role !== 'marinheiro') || [];
-  const canInviteMembers = hasBoatRole(boatId, ['admin']);
+  const canInviteMembers = canManagePartners;
 
   return (
     <div className="space-y-6 pb-12">
@@ -225,14 +223,18 @@ export default function BoatDetailsPage() {
             </div>
           </div>
           
-          {canWrite && (
+          {(canManageFinancials || canDeleteBoat) && (
             <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto pb-2">
-               <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm border-border" onClick={() => setShowEditModal(true)}>
-                 <Edit className="h-4 w-4 mr-2" /> Editar
-               </Button>
-               <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 border-destructive/20 hover:border-destructive/30" onClick={() => setShowDeleteConfirm(true)}>
-                 <Trash2 className="h-4 w-4" />
-               </Button>
+               {canManageFinancials && (
+                 <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm border-border" onClick={() => setShowEditModal(true)}>
+                   <Edit className="h-4 w-4 mr-2" /> Editar
+                 </Button>
+               )}
+               {canDeleteBoat && (
+                 <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 border-destructive/20 hover:border-destructive/30" onClick={() => setShowDeleteConfirm(true)}>
+                   <Trash2 className="h-4 w-4" />
+                 </Button>
+               )}
             </div>
           )}
         </div>
@@ -318,9 +320,11 @@ export default function BoatDetailsPage() {
                         size="sm"
                         icon={Users}
                         title="Nenhum sócio ativo"
-                        description="Adicione membros para dividirem os custos e utilizarem a embarcação."
-                        actionLabel="Adicionar Sócio"
-                        onAction={() => setShowAddMemberModal(true)}
+                        description={canManagePartners
+                          ? 'Adicione membros para dividirem os custos e utilizarem a embarcação.'
+                          : 'Apenas administradores podem adicionar sócios.'}
+                        actionLabel={canManagePartners ? 'Adicionar Sócio' : undefined}
+                        onAction={canManagePartners ? () => setShowAddMemberModal(true) : undefined}
                       />
                     )}
                   </CardContent>

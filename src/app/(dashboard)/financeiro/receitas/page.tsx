@@ -20,7 +20,9 @@ import { getErrorMessage } from '@/lib/errors';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { TrendingUp } from 'lucide-react';
 import { revenueService } from '@/services';
 import type { Revenue } from '@/types';
 
@@ -52,12 +54,13 @@ export default function ReceitasPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const toast = useToast();
-  const canWrite = useCanWrite();
+  const canView = useHasAnyFinancialBoat();
+  const canWrite = canView;
   const { boats } = useBoats();
 
   const { data: revenues, loading, error, refetch } = useApi<Revenue[]>(
-    () => revenueService.list(),
-    [],
+    () => canView ? revenueService.list() : Promise.resolve({ data: [] as Revenue[] }),
+    [canView],
   );
 
   const revenueList = revenues ?? [];
@@ -102,6 +105,16 @@ export default function ReceitasPage() {
     } catch (err) {
       toast.error(getErrorMessage(err, 'Erro ao confirmar recebimento.'));
     }
+  }
+
+  if (!canView) {
+    return (
+      <EmptyState
+        icon={TrendingUp}
+        title="Acesso restrito"
+        description="Apenas administradores e sócios podem visualizar as receitas."
+      />
+    );
   }
 
   if (loading) {

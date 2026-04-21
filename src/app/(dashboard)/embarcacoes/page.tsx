@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { BOAT_TYPE_LABELS, SUBSCRIPTION_STATUS_META } from '@/constants';
 import { useApi } from '@/hooks/useApi';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useCanCreateBoat } from '@/hooks/useBoatPermissions';
 import { useUser } from '@/contexts/UserContext';
 import { getErrorMessage } from '@/lib/errors';
 import { boatService } from '@/services';
@@ -27,7 +27,7 @@ export default function EmbarcacoesPage() {
   const [boatImage, setBoatImage] = useState<File | null>(null);
   const router = useRouter();
   const toast = useToast();
-  const canWrite = useCanWrite();
+  const canWrite = useCanCreateBoat();
   const { refetch: refetchUser } = useUser();
   const { data: boats, loading, error, refetch } = useApi<Boat[]>(() => boatService.list());
 

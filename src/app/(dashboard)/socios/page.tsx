@@ -23,9 +23,10 @@ import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/shared/StatCard';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
-import { useCanWrite } from '@/hooks/useCanWrite';
+import { useHasAnyAdminBoat, useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
 import { useBoats } from '@/hooks/useEntityOptions';
 import { partnerService } from '@/services';
 import type { Partner, PartnerContribution } from '@/types';
@@ -61,7 +62,8 @@ export default function SociosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'socios' | 'contribuicoes'>('socios');
-  const canWrite = useCanWrite();
+  const canManagePartners = useHasAnyAdminBoat();
+  const canViewPartners = useHasAnyFinancialBoat();
   const { boats } = useBoats();
 
   const { data: partnersData, loading: loadingPartners, error: errorPartners, refetch: refetchPartners } = useApi(
@@ -147,6 +149,16 @@ export default function SociosPage() {
     );
   }
 
+  if (!canViewPartners) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="Acesso restrito"
+        description="Apenas administradores e sócios podem visualizar os sócios e contribuições das embarcações."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -154,7 +166,7 @@ export default function SociosPage() {
           <h1 className="text-2xl font-bold">Sócios</h1>
           <p className="text-muted-foreground">Gestão de sócios e contribuições</p>
         </div>
-        {canWrite && (
+        {canManagePartners && (
           <Button onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> Adicionar Sócio
           </Button>
@@ -237,7 +249,7 @@ export default function SociosPage() {
                             </p>
                           </div>
                         </div>
-                        {canWrite && partner.status === 'ativo' && (
+                        {canManagePartners && partner.status === 'ativo' && (
                           <div className="mt-3 flex justify-end">
                             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 text-xs" onClick={() => handleDeactivatePartner(partner.id)}>
                               <UserX className="h-3.5 w-3.5 mr-1" /> Desativar
@@ -255,7 +267,7 @@ export default function SociosPage() {
       ) : (
         /* Contributions Tab */
         <>
-        {canWrite && (
+        {canManagePartners && (
           <div className="flex justify-end">
             <Button onClick={handleGenerateContributions}>
               <DollarSign className="h-4 w-4 mr-2" /> Gerar Contribuições do Mês
@@ -292,7 +304,7 @@ export default function SociosPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">{contrib.paidAt ? formatDate(contrib.paidAt) : '—'}</td>
                         <td className="px-6 py-4">
-                          {canWrite && contrib.status !== 'pago' && <Button variant="ghost" size="sm" onClick={() => handlePayContribution(contrib.id)}>Confirmar</Button>}
+                          {canManagePartners && contrib.status !== 'pago' && <Button variant="ghost" size="sm" onClick={() => handlePayContribution(contrib.id)}>Confirmar</Button>}
                         </td>
                       </tr>
                     );
