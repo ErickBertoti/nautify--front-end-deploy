@@ -30,24 +30,24 @@ import type { Notification, UserRole } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 
 const typeConfig: Record<string, { label: string; icon: typeof Bell; color: string; bgColor: string }> = {
-  financeiro: { label: 'Financeiro', icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-  documento: { label: 'Documento', icon: FileText, color: 'text-amber-600', bgColor: 'bg-amber-50' },
-  manutencao: { label: 'Manutencao', icon: Wrench, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-  agenda: { label: 'Agenda', icon: Calendar, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-  embarcacao: { label: 'Embarcacao', icon: Ship, color: 'text-nautify-700', bgColor: 'bg-nautify-50' },
-  sistema: { label: 'Sistema', icon: Info, color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  financeiro: { label: 'Financeiro', icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-300', bgColor: 'bg-emerald-50 dark:bg-emerald-500/15' },
+  documento: { label: 'Documento', icon: FileText, color: 'text-amber-600 dark:text-amber-300', bgColor: 'bg-amber-50 dark:bg-amber-500/15' },
+  manutencao: { label: 'Manutencao', icon: Wrench, color: 'text-blue-600 dark:text-blue-300', bgColor: 'bg-blue-50 dark:bg-blue-500/15' },
+  agenda: { label: 'Agenda', icon: Calendar, color: 'text-purple-600 dark:text-purple-300', bgColor: 'bg-purple-50 dark:bg-purple-500/15' },
+  embarcacao: { label: 'Embarcacao', icon: Ship, color: 'text-nautify-700 dark:text-nautify-300', bgColor: 'bg-nautify-50 dark:bg-nautify-500/15' },
+  sistema: { label: 'Sistema', icon: Info, color: 'text-gray-600 dark:text-gray-300', bgColor: 'bg-gray-100 dark:bg-gray-500/15' },
 };
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
-  alta: { label: 'Alta', color: 'bg-red-50 text-red-700' },
-  media: { label: 'Media', color: 'bg-amber-50 text-amber-700' },
-  baixa: { label: 'Baixa', color: 'bg-gray-100 text-gray-600' },
+  alta: { label: 'Alta', color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300' },
+  media: { label: 'Media', color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' },
+  baixa: { label: 'Baixa', color: 'bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300' },
 };
 
 const invitationStatusConfig: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendente', color: 'bg-nautify-50 text-nautify-700' },
-  accepted: { label: 'Aceito', color: 'bg-emerald-50 text-emerald-700' },
-  rejected: { label: 'Recusado', color: 'bg-gray-100 text-gray-600' },
+  pending: { label: 'Pendente', color: 'bg-nautify-50 text-nautify-700 dark:bg-nautify-500/15 dark:text-nautify-300' },
+  accepted: { label: 'Aceito', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  rejected: { label: 'Recusado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300' },
 };
 
 const roleLabel: Record<UserRole, string> = {
@@ -170,8 +170,8 @@ export default function NotificacoesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard title="Nao Lidas" value={String(unread)} subtitle="notificacoes" icon={Bell} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
-        <StatCard title="Prioridade Alta" value={String(highPriority)} subtitle="pendentes" icon={AlertTriangle} iconBgColor="bg-red-50" iconColor="text-red-600" />
-        <StatCard title="Total" value={String(notifications.length)} subtitle="notificacoes" icon={BellOff} iconBgColor="bg-gray-100" iconColor="text-gray-600" />
+        <StatCard title="Prioridade Alta" value={String(highPriority)} subtitle="pendentes" icon={AlertTriangle} iconBgColor="bg-red-50 dark:bg-red-500/15" iconColor="text-red-600 dark:text-red-300" />
+        <StatCard title="Total" value={String(notifications.length)} subtitle="notificacoes" icon={BellOff} iconBgColor="bg-gray-100 dark:bg-gray-500/15" iconColor="text-gray-600 dark:text-gray-300" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -205,7 +205,7 @@ export default function NotificacoesPage() {
           return (
             <Card
               key={notification.id}
-              className={`transition-all hover:shadow-sm ${!notification.isRead ? 'border-l-4 border-l-nautify-500 bg-nautify-50/20' : ''}`}
+              className={`transition-all hover:shadow-sm ${!notification.isRead ? 'border-l-4 border-l-nautify-500 bg-nautify-50/20 dark:bg-nautify-500/10' : ''}`}
             >
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start gap-3">

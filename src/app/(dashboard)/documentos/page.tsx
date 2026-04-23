@@ -38,18 +38,18 @@ import { uploadFile } from '@/lib/storage';
 import type { Document as NautifyDocument } from '@/types';
 
 const categoryConfig: Record<string, { label: string; icon: typeof Shield; color: string }> = {
-  seguro: { label: 'Seguro', icon: Shield, color: 'bg-blue-50 text-blue-700' },
+  seguro: { label: 'Seguro', icon: Shield, color: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300' },
   habilitacao: { label: 'Habilitação', icon: FileCheck, color: 'bg-purple-50 text-purple-700' },
-  contrato: { label: 'Contrato', icon: FileText, color: 'bg-nautify-50 text-nautify-700' },
+  contrato: { label: 'Contrato', icon: FileText, color: 'bg-nautify-50 text-nautify-700 dark:bg-nautify-500/15 dark:text-nautify-300' },
   licenca: { label: 'Licença', icon: FileClock, color: 'bg-teal-50 text-teal-700' },
   vistoria: { label: 'Vistoria', icon: FileWarning, color: 'bg-orange-50 text-orange-700' },
-  outro: { label: 'Outro', icon: FolderOpen, color: 'bg-gray-100 text-gray-700' },
+  outro: { label: 'Outro', icon: FolderOpen, color: 'bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300' },
 };
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  valido: { label: 'Válido', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2 },
-  vencendo: { label: 'Vencendo', color: 'bg-amber-50 text-amber-700', icon: Clock },
-  vencido: { label: 'Vencido', color: 'bg-red-50 text-red-700', icon: AlertTriangle },
+  valido: { label: 'Válido', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', icon: CheckCircle2 },
+  vencendo: { label: 'Vencendo', color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', icon: Clock },
+  vencido: { label: 'Vencido', color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300', icon: AlertTriangle },
 };
 
 export default function DocumentosPage() {
@@ -115,14 +115,14 @@ export default function DocumentosPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total" value={String(documents.length)} subtitle="documentos" icon={FileText} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
-        <StatCard title="Válidos" value={String(validos)} subtitle="em dia" icon={CheckCircle2} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Vencendo" value={String(vencendo)} subtitle="próx. 30 dias" icon={Clock} iconBgColor="bg-amber-50" iconColor="text-amber-600" />
-        <StatCard title="Vencidos" value={String(vencidos)} subtitle="requer ação" icon={AlertTriangle} iconBgColor="bg-red-50" iconColor="text-red-600" />
+        <StatCard title="Válidos" value={String(validos)} subtitle="em dia" icon={CheckCircle2} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+        <StatCard title="Vencendo" value={String(vencendo)} subtitle="próx. 30 dias" icon={Clock} iconBgColor="bg-amber-50 dark:bg-amber-500/15" iconColor="text-amber-600 dark:text-amber-300" />
+        <StatCard title="Vencidos" value={String(vencidos)} subtitle="requer ação" icon={AlertTriangle} iconBgColor="bg-red-50 dark:bg-red-500/15" iconColor="text-red-600 dark:text-red-300" />
       </div>
 
       {/* Upload Area */}
       {canWrite && <Card
-        className={`border-2 border-dashed transition-colors ${dragActive ? 'border-nautify-400 bg-nautify-50/50' : 'border-border'}`}
+        className={`border-2 border-dashed transition-colors ${dragActive ? 'border-nautify-400 bg-nautify-50/50 dark:bg-nautify-500/10' : 'border-border'}`}
         onDragOver={(e: React.DragEvent) => { e.preventDefault(); setDragActive(true); }}
         onDragLeave={() => setDragActive(false)}
         onDrop={async (e: React.DragEvent) => {

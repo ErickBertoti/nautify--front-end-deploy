@@ -27,9 +27,9 @@ import { expenseService } from '@/services';
 import type { Expense } from '@/types';
 
 const categoryColors: Record<string, string> = {
-  fixa: 'bg-blue-50 text-blue-700',
-  variavel: 'bg-purple-50 text-purple-700',
-  individual: 'bg-amber-50 text-amber-700',
+  fixa: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  variavel: 'bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300',
+  individual: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
 };
 
 const categoryLabels: Record<string, string> = {
@@ -39,9 +39,9 @@ const categoryLabels: Record<string, string> = {
 };
 
 const statusConfig: Record<string, { color: string; label: string }> = {
-  paga: { color: 'bg-emerald-50 text-emerald-700', label: 'Paga' },
-  pendente: { color: 'bg-amber-50 text-amber-700', label: 'Pendente' },
-  vencida: { color: 'bg-red-50 text-red-700', label: 'Vencida' },
+  paga: { color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', label: 'Paga' },
+  pendente: { color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', label: 'Pendente' },
+  vencida: { color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300', label: 'Vencida' },
 };
 
 export default function DespesasPage() {
@@ -145,10 +145,10 @@ export default function DespesasPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total" value={formatCurrency(total)} subtitle="todas despesas" icon={DollarSign} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
-        <StatCard title="Pagas" value={formatCurrency(totalPagas)} subtitle="quitadas" icon={CheckCircle} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Pendentes" value={formatCurrency(totalPendentes)} subtitle="aguardando" icon={Clock} iconBgColor="bg-amber-50" iconColor="text-amber-600" />
-        <StatCard title="Vencidas" value={formatCurrency(totalVencidas)} subtitle="em atraso" icon={AlertCircle} iconBgColor="bg-red-50" iconColor="text-red-600" />
+        <StatCard title="Total" value={formatCurrency(total)} subtitle="todas despesas" icon={DollarSign} iconBgColor="bg-nautify-50 dark:bg-nautify-500/15" iconColor="text-nautify-700 dark:text-nautify-300" />
+        <StatCard title="Pagas" value={formatCurrency(totalPagas)} subtitle="quitadas" icon={CheckCircle} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+        <StatCard title="Pendentes" value={formatCurrency(totalPendentes)} subtitle="aguardando" icon={Clock} iconBgColor="bg-amber-50 dark:bg-amber-500/15" iconColor="text-amber-600 dark:text-amber-300" />
+        <StatCard title="Vencidas" value={formatCurrency(totalVencidas)} subtitle="em atraso" icon={AlertCircle} iconBgColor="bg-red-50 dark:bg-red-500/15" iconColor="text-red-600 dark:text-red-300" />
       </div>
 
       {/* Category Breakdown */}

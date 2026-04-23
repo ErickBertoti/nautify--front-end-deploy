@@ -274,32 +274,32 @@ export default function AssinaturasPage() {
               value={String(activeCount)}
               subtitle="em cobranca normal"
               icon={Wallet}
-              iconBgColor="bg-emerald-50"
-              iconColor="text-emerald-600"
+              iconBgColor="bg-emerald-50 dark:bg-emerald-500/15"
+              iconColor="text-emerald-600 dark:text-emerald-300"
             />
             <StatCard
               title="Exigem atencao"
               value={String(attentionCount)}
               subtitle="pendentes ou atrasadas"
               icon={AlertCircle}
-              iconBgColor="bg-amber-50"
-              iconColor="text-amber-600"
+              iconBgColor="bg-amber-50 dark:bg-amber-500/15"
+              iconColor="text-amber-600 dark:text-amber-300"
             />
             <StatCard
               title="Canceladas"
               value={String(canceledCount)}
               subtitle="mantidas no historico"
               icon={Ban}
-              iconBgColor="bg-slate-100"
-              iconColor="text-slate-600"
+              iconBgColor="bg-slate-100 dark:bg-slate-500/15"
+              iconColor="text-slate-600 dark:text-slate-300"
             />
             <StatCard
               title="Valor mensal ativo"
               value={formatCurrency(activeValue)}
               subtitle="somente assinaturas ativas"
               icon={CreditCard}
-              iconBgColor="bg-nautify-50"
-              iconColor="text-nautify-700"
+              iconBgColor="bg-nautify-50 dark:bg-nautify-500/15"
+              iconColor="text-nautify-700 dark:text-nautify-300"
             />
           </div>
 

@@ -143,6 +143,13 @@ body {
   @apply font-sans;
 }
 
+select,
+option,
+optgroup {
+  color: var(--foreground);
+  background-color: var(--card);
+}
+
 h1,
 h2,
 h3 {

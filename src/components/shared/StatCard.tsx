@@ -20,8 +20,8 @@ export function StatCard({
   subtitle,
   icon: Icon,
   trend,
-  iconBgColor = 'bg-nautify-100',
-  iconColor = 'text-nautify-700',
+  iconBgColor = 'bg-nautify-100 dark:bg-nautify-500/20',
+  iconColor = 'text-nautify-700 dark:text-nautify-300',
   className,
 }: StatCardProps) {
   return (

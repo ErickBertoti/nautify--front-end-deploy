@@ -12,6 +12,27 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+export function formatDecimal(value: number, fractionDigits = 2): string {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+}
+
+export function parseLocaleNumber(value: FormDataEntryValue | string | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+
+  const normalized = String(value)
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/R\$/gi, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '.');
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function formatDate(date: string): string {
   return new Date(date).toLocaleDateString('pt-BR', {
     day: '2-digit',

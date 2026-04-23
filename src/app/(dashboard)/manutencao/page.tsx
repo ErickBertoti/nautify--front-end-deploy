@@ -30,28 +30,28 @@ import type { Maintenance, MaintenancePartHistory, PaginatedResponse } from '@/t
 import { EmptyState } from '@/components/shared/EmptyState';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  agendada: { label: 'Agendada', color: 'bg-blue-50 text-blue-700', icon: Calendar },
-  em_andamento: { label: 'Em andamento', color: 'bg-amber-50 text-amber-700', icon: Clock },
-  concluida: { label: 'Concluída', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle },
-  cancelada: { label: 'Cancelada', color: 'bg-red-50 text-red-700', icon: XCircle },
+  agendada: { label: 'Agendada', color: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300', icon: Calendar },
+  em_andamento: { label: 'Em andamento', color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', icon: Clock },
+  concluida: { label: 'Concluída', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', icon: CheckCircle },
+  cancelada: { label: 'Cancelada', color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300', icon: XCircle },
 };
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
-  baixa: { label: 'Baixa', color: 'bg-gray-100 text-gray-700' },
-  media: { label: 'Média', color: 'bg-blue-50 text-blue-700' },
-  alta: { label: 'Alta', color: 'bg-amber-50 text-amber-700' },
-  urgente: { label: 'Urgente', color: 'bg-red-50 text-red-700' },
+  baixa: { label: 'Baixa', color: 'bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300' },
+  media: { label: 'Média', color: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300' },
+  alta: { label: 'Alta', color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' },
+  urgente: { label: 'Urgente', color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300' },
 };
 
 const fallbackStatus = {
   label: 'Sem status',
-  color: 'bg-gray-100 text-gray-700',
+  color: 'bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300',
   icon: AlertTriangle,
 };
 
 const fallbackPriority = {
   label: 'Sem prioridade',
-  color: 'bg-gray-100 text-gray-700',
+  color: 'bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300',
 };
 
 function formatDisplayLabel(value: string) {
@@ -174,10 +174,10 @@ export default function ManutencaoPage() {
       {activeTab === 'manutencoes' && (<>
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Agendadas" value={String(agendadas)} subtitle="futuras" icon={Calendar} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-        <StatCard title="Em Andamento" value={String(emAndamento)} subtitle="ativas agora" icon={Clock} iconBgColor="bg-amber-50" iconColor="text-amber-600" />
-        <StatCard title="Concluídas" value={String(concluidas)} subtitle="finalizadas" icon={CheckCircle} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Custo Estimado" value={formatCurrency(totalEstimated)} subtitle="total previsto" icon={DollarSign} iconBgColor="bg-purple-50" iconColor="text-purple-600" />
+        <StatCard title="Agendadas" value={String(agendadas)} subtitle="futuras" icon={Calendar} iconBgColor="bg-blue-50 dark:bg-blue-500/15" iconColor="text-blue-600 dark:text-blue-300" />
+        <StatCard title="Em Andamento" value={String(emAndamento)} subtitle="ativas agora" icon={Clock} iconBgColor="bg-amber-50 dark:bg-amber-500/15" iconColor="text-amber-600 dark:text-amber-300" />
+        <StatCard title="Concluídas" value={String(concluidas)} subtitle="finalizadas" icon={CheckCircle} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+        <StatCard title="Custo Estimado" value={formatCurrency(totalEstimated)} subtitle="total previsto" icon={DollarSign} iconBgColor="bg-purple-50 dark:bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-300" />
       </div>
 
       {/* Filters */}
@@ -214,8 +214,8 @@ export default function ManutencaoPage() {
           const isCorretiva = maintenance.type === 'corretiva';
           const typeLabel = isPreventiva ? 'Preventiva' : isCorretiva ? 'Corretiva' : 'Não informado';
           const typeBadgeVariant = isPreventiva ? 'default' : 'outline';
-          const typeIconBg = isPreventiva ? 'bg-blue-50' : isCorretiva ? 'bg-amber-50' : 'bg-gray-100';
-          const typeIconColor = isPreventiva ? 'text-blue-600' : isCorretiva ? 'text-amber-600' : 'text-gray-600';
+          const typeIconBg = isPreventiva ? 'bg-blue-50 dark:bg-blue-500/15' : isCorretiva ? 'bg-amber-50 dark:bg-amber-500/15' : 'bg-gray-100 dark:bg-gray-500/15';
+          const typeIconColor = isPreventiva ? 'text-blue-600 dark:text-blue-300' : isCorretiva ? 'text-amber-600 dark:text-amber-300' : 'text-gray-600 dark:text-gray-300';
           return (
             <Card key={maintenance.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">

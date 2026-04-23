@@ -32,17 +32,17 @@ import { calendarService } from '@/services';
 import type { CalendarEvent } from '@/types';
 
 const eventTypeConfig: Record<string, { label: string; color: string; bgColor: string; icon: typeof CalendarDays }> = {
-  reserva: { label: 'Reserva', color: 'bg-nautify-500', bgColor: 'bg-nautify-50 text-nautify-700', icon: Ship },
-  manutencao: { label: 'Manutenção', color: 'bg-amber-500', bgColor: 'bg-amber-50 text-amber-700', icon: Wrench },
-  lembrete: { label: 'Lembrete', color: 'bg-red-500', bgColor: 'bg-red-50 text-red-700', icon: Bell },
-  evento: { label: 'Evento', color: 'bg-purple-500', bgColor: 'bg-purple-50 text-purple-700', icon: Users },
-  outro: { label: 'Outro', color: 'bg-gray-500', bgColor: 'bg-gray-50 text-gray-700', icon: CalendarDays },
+  reserva: { label: 'Reserva', color: 'bg-nautify-500', bgColor: 'bg-nautify-50 text-nautify-700 dark:bg-nautify-500/15 dark:text-nautify-300', icon: Ship },
+  manutencao: { label: 'Manutenção', color: 'bg-amber-500', bgColor: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', icon: Wrench },
+  lembrete: { label: 'Lembrete', color: 'bg-red-500', bgColor: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300', icon: Bell },
+  evento: { label: 'Evento', color: 'bg-purple-500', bgColor: 'bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300', icon: Users },
+  outro: { label: 'Outro', color: 'bg-gray-500', bgColor: 'bg-gray-50 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300', icon: CalendarDays },
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-  confirmado: { label: 'Confirmado', color: 'bg-emerald-50 text-emerald-700' },
-  pendente: { label: 'Pendente', color: 'bg-amber-50 text-amber-700' },
-  cancelado: { label: 'Cancelado', color: 'bg-red-50 text-red-700' },
+  confirmado: { label: 'Confirmado', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  pendente: { label: 'Pendente', color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' },
+  cancelado: { label: 'Cancelado', color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300' },
 };
 
 const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -61,11 +61,13 @@ export default function AgendaPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importedEvents, setImportedEvents] = useState<Array<{ title: string; type: string; startDate: string; endDate: string; boatId: string; description: string }>>([]);
   const [importing, setImporting] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [viewDate, setViewDate] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
   const canWrite = useHasAnyBoat();
   const toast = useToast();
   const { boats } = useBoats();
-  const [currentYear] = useState(2026);
   const [filterType, setFilterType] = useState('');
   const [boatFilter, setBoatFilter] = useState('');
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
@@ -75,17 +77,18 @@ export default function AgendaPage() {
     [boatFilter],
   );
 
+  const currentMonth = viewDate.getMonth();
+  const currentYear = viewDate.getFullYear();
   const calendarDays = getCalendarDays(currentYear, currentMonth);
   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
   const allEvents = events ?? [];
+  const filteredEvents = filterType ? allEvents.filter((e) => e.type === filterType) : allEvents;
 
   const getEventsForDay = (day: number) => {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return allEvents.filter((e) => e.startDate.startsWith(dateStr));
+    return filteredEvents.filter((e) => e.startDate.startsWith(dateStr));
   };
-
-  const filteredEvents = filterType ? allEvents.filter((e) => e.type === filterType) : allEvents;
 
   const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -240,11 +243,11 @@ export default function AgendaPage() {
         /* Calendar View */
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <button onClick={() => setCurrentMonth((m) => m === 0 ? 11 : m - 1)} className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+            <button onClick={() => setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))} className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
               <ChevronLeft className="h-5 w-5" />
             </button>
             <CardTitle>{monthNames[currentMonth]} {currentYear}</CardTitle>
-            <button onClick={() => setCurrentMonth((m) => m === 11 ? 0 : m + 1)} className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+            <button onClick={() => setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))} className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
               <ChevronRight className="h-5 w-5" />
             </button>
           </CardHeader>
@@ -267,11 +270,11 @@ export default function AgendaPage() {
                   <div
                     key={idx}
                     className={`min-h-[48px] sm:min-h-[80px] p-0.5 sm:p-1 border border-border/50 rounded transition-colors ${day ? 'hover:bg-muted/50' : 'bg-muted/20'
-                      } ${isToday ? 'bg-nautify-50/50 border-nautify-200' : ''}`}
+                      } ${isToday ? 'bg-nautify-50/50 border-nautify-200 dark:bg-nautify-500/10 dark:border-nautify-500/30' : ''}`}
                   >
                     {day && (
                       <>
-                        <span className={`text-[10px] sm:text-xs font-medium ${isToday ? 'text-nautify-600 font-bold' : 'text-muted-foreground'}`}>
+                        <span className={`text-[10px] sm:text-xs font-medium ${isToday ? 'text-nautify-600 dark:text-nautify-300 font-bold' : 'text-muted-foreground'}`}>
                           {day}
                         </span>
                         <div className="space-y-0.5 mt-0.5 hidden sm:block">
@@ -317,7 +320,7 @@ export default function AgendaPage() {
                   <div key={event.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className={`w-1.5 h-10 sm:h-14 rounded-full shrink-0 ${config?.color || 'bg-gray-500'}`} />
-                      <div className={`flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${config?.bgColor || 'bg-gray-50'}`}>
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${config?.bgColor || 'bg-gray-50 dark:bg-gray-500/15 dark:text-gray-300'}`}>
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -340,12 +343,12 @@ export default function AgendaPage() {
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config?.bgColor}`}>{config?.label}</span>
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status?.color}`}>{status?.label}</span>
                       {canWrite && event.status === 'confirmado' && (
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-amber-600 text-xs px-2" onClick={() => handleCancelEvent(event.id)}>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-amber-600 dark:hover:text-amber-300 text-xs px-2" onClick={() => handleCancelEvent(event.id)}>
                           Cancelar
                         </Button>
                       )}
                       {canWrite && (
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 text-xs px-2" onClick={() => handleDeleteEvent(event.id)}>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 dark:hover:text-red-300 text-xs px-2" onClick={() => handleDeleteEvent(event.id)}>
                           Excluir
                         </Button>
                       )}

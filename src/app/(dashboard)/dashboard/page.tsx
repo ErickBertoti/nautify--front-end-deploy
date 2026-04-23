@@ -7,6 +7,7 @@ import {
   Ship,
   Receipt,
   Navigation,
+  Droplets,
   TrendingUp,
   TrendingDown,
   ArrowRight,
@@ -26,7 +27,7 @@ import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDecimal } from '@/lib/utils';
 import { OverviewChart } from '@/components/dashboard/OverviewChart';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -109,6 +110,7 @@ export default function DashboardPage() {
   }
 
   const recentExpenses = stats.upcomingExpenses || [];
+  const recentFuelings = stats.recentFuelings || [];
   const upcomingEvents = stats.upcomingEvents || [];
   const monthlyChart = stats.monthlyRevenueVsExpense || [];
   const expensesByCategory = stats.monthlyExpensesByCategory || { fixa: 0, variavel: 0, individual: 0 };
@@ -157,7 +159,7 @@ export default function DashboardPage() {
         <StatCard
           title="Despesas do Mês"
           value={formatCurrency(stats.totalExpensesMonth)}
-          subtitle="total acumulado"
+          subtitle="inclui combustÃ­vel"
           icon={TrendingDown}
           trend={{ value: Math.abs(stats.expensesChangePercent ?? 0), isPositive: (stats.expensesChangePercent ?? 0) <= 0 }}
           iconBgColor="bg-red-100 dark:bg-red-500/20"
@@ -182,7 +184,7 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Secondary Stats */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Link href="/saidas" className="block h-full">
           <SpotlightCard className="h-full cursor-pointer group p-0">
             <CardContent className="p-4 sm:p-5 flex items-center gap-4">
@@ -192,6 +194,22 @@ export default function DashboardPage() {
               <div>
                 <p className="text-2xl sm:text-3xl font-bold tracking-tight">{stats.totalTripsMonth}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground font-medium">Saídas no Mês</p>
+              </div>
+            </CardContent>
+          </SpotlightCard>
+        </Link>
+        <Link href="/combustivel" className="block h-full">
+          <SpotlightCard className="h-full cursor-pointer group p-0">
+            <CardContent className="p-4 sm:p-5 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 transition-transform group-hover:scale-110">
+                <Droplets className="h-6 w-6" strokeWidth={2.5} />
+              </div>
+              <div>
+                <p className="text-xl sm:text-2xl font-bold tracking-tight">{formatCurrency(stats.totalFuelCostMonth)}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                  CombustÃ­vel no mÃªs
+                </p>
+                <p className="text-[11px] text-muted-foreground">{formatDecimal(stats.totalFuelLitersMonth)} L</p>
               </div>
             </CardContent>
           </SpotlightCard>
@@ -393,6 +411,64 @@ export default function DashboardPage() {
             ) : (
               <div className="p-6">
                 <EmptyState size="sm" icon={CalendarDays} title="Sem eventos próximos" description="Nenhum evento agendado nos próximos dias." />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Card className="flex flex-col overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/20">
+            <CardTitle className="flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-muted-foreground" />
+              Abastecimentos Recentes
+            </CardTitle>
+            <Link href="/combustivel">
+              <Button variant="ghost" size="sm" className="hover:bg-primary/5">
+                Ver combustÃ­vel <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="p-0">
+            {recentFuelings.length > 0 ? (
+              <div className="divide-y divide-border/50">
+                {recentFuelings.map((fueling, i) => (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 * i + 0.1 }}
+                    key={fueling.id}
+                    className="flex items-center justify-between gap-4 px-6 py-4 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {fueling.boatName || 'EmbarcaÃ§Ã£o'}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatDate(fueling.date)}</span>
+                        <span>{formatDecimal(fueling.liters)} L</span>
+                        {fueling.fuelBreakdown?.map((item) => (
+                          <Badge key={`${fueling.id}-${item.fuelType}`} variant="outline" className="capitalize">
+                            {item.fuelType}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="shrink-0 text-sm font-bold tracking-tight">
+                      {formatCurrency(fueling.totalValue)}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6">
+                <EmptyState
+                  size="sm"
+                  icon={Droplets}
+                  title="Sem abastecimentos recentes"
+                  description="Os novos abastecimentos aparecem aqui e entram nos totais do dashboard."
+                />
               </div>
             )}
           </CardContent>

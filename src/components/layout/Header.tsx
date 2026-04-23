@@ -101,7 +101,7 @@ export function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, mounted, setTheme } = useTheme();
   const { user } = useUser();
   const canSeeFinancial = useHasAnyFinancialBoat();
   const visibleMobileGroups = mobileNavGroups
@@ -177,9 +177,9 @@ export function Header() {
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
-            title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            title={mounted ? (resolvedTheme === 'dark' ? 'Modo claro' : 'Modo escuro') : 'Alternar tema'}
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {mounted && resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
           <div className="relative" ref={notificationsRef}>
             <button

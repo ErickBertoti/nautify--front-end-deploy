@@ -3,14 +3,19 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
+type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
+  resolvedTheme: ResolvedTheme;
+  mounted: boolean;
   setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'system',
+  resolvedTheme: 'light',
+  mounted: false,
   setTheme: () => {},
 });
 
@@ -19,18 +24,32 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'system';
-    return (localStorage.getItem('nautify-theme') as Theme | null) || 'system';
-  });
+  const [theme, setTheme] = useState<Theme>('system');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const storedTheme = (localStorage.getItem('nautify-theme') as Theme | null) || 'system';
+    setTheme(storedTheme);
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
 
-    function applyTheme(t: Theme) {
+    function getResolvedTheme(t: Theme): ResolvedTheme {
       if (t === 'system') {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        root.classList.toggle('dark', prefersDark);
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      return t;
+    }
+
+    function applyTheme(t: Theme) {
+      const nextResolvedTheme = getResolvedTheme(t);
+      setResolvedTheme(nextResolvedTheme);
+
+      if (t === 'system') {
+        root.classList.toggle('dark', nextResolvedTheme === 'dark');
       } else {
         root.classList.toggle('dark', t === 'dark');
       }
@@ -48,7 +67,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, mounted, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -129,8 +129,8 @@ export default function FluxoCaixaPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Total Entradas" value={formatCurrency(summary?.totalEntradas ?? 0)} subtitle="receitas do mês" icon={TrendingUp} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Total Saídas" value={formatCurrency(summary?.totalSaidas ?? 0)} subtitle="despesas do mês" icon={TrendingDown} iconBgColor="bg-red-50" iconColor="text-red-600" />
+        <StatCard title="Total Entradas" value={formatCurrency(summary?.totalEntradas ?? 0)} subtitle="receitas do mês" icon={TrendingUp} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+        <StatCard title="Total Saídas" value={formatCurrency(summary?.totalSaidas ?? 0)} subtitle="despesas do mês" icon={TrendingDown} iconBgColor="bg-red-50 dark:bg-red-500/15" iconColor="text-red-600 dark:text-red-300" />
         <StatCard title="Saldo" value={formatCurrency(summary?.saldo ?? 0)} subtitle="resultado líquido" icon={DollarSign} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
       </div>
 
