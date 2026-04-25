@@ -6,6 +6,9 @@
 // --- Perfis de Usuário ---
 export type UserRole = 'admin' | 'socio' | 'marinheiro';
 export type DocumentType = 'cpf' | 'cnpj';
+export type InstallmentStrategy = 'single' | 'generated' | 'metadata_only';
+export type PaymentMethod = 'pix' | 'transferencia' | 'cartao_credito' | 'cartao_debito' | 'boleto' | 'dinheiro' | 'outro';
+export type RefundStatus = 'none' | 'partial' | 'full';
 
 export interface UserAddress {
   cep: string;
@@ -91,8 +94,21 @@ export interface Expense {
   responsibleUser?: User;
   splitAmount?: number;
   splitCount?: number;
+  installmentStrategy: InstallmentStrategy;
+  installmentGroupId?: string;
+  installmentIndex: number;
+  installmentCount: number;
   dueDate?: string;
   status: ExpenseStatus;
+  paidByUserId?: string;
+  paidByUser?: User;
+  paidAt?: string;
+  paymentMethod?: PaymentMethod;
+  paymentNotes?: string;
+  refundStatus: RefundStatus;
+  refundAmount?: number;
+  refundReason?: string;
+  refundedAt?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -112,6 +128,12 @@ export interface Revenue {
   payerUser?: User;
   dueDate?: string;
   receivedDate?: string;
+  paymentMethod?: PaymentMethod;
+  paymentNotes?: string;
+  refundStatus: RefundStatus;
+  refundAmount?: number;
+  refundReason?: string;
+  refundedAt?: string;
   status: RevenueStatus;
   createdBy: string;
   createdAt: string;
@@ -130,6 +152,11 @@ export interface CashFlowEntry {
   date: string;
   relatedExpenseId?: string;
   relatedRevenueId?: string;
+  relatedContributionId?: string;
+  paymentMethod?: PaymentMethod;
+  paidByUserId?: string;
+  paidByUser?: User;
+  refundOfEntryId?: string;
   createdAt: string;
 }
 
@@ -313,6 +340,14 @@ export interface PartnerContribution {
   amount: number;
   month: string;
   paidAt?: string;
+  paidByUserId?: string;
+  paidByUser?: User;
+  paymentMethod?: PaymentMethod;
+  paymentNotes?: string;
+  refundStatus: RefundStatus;
+  refundAmount?: number;
+  refundReason?: string;
+  refundedAt?: string;
   status: 'pendente' | 'pago' | 'atrasado';
   createdAt: string;
 }
@@ -345,13 +380,41 @@ export type NotificationPriority = 'baixa' | 'media' | 'alta';
 
 export type BoatInvitationStatus = 'pending' | 'accepted' | 'rejected';
 
+export interface BoatInvitation {
+  id: string;
+  boatId: string;
+  invitedEmail: string;
+  role: UserRole;
+  status: BoatInvitationStatus;
+  createdAt: string;
+  respondedAt?: string;
+  boatName?: string;
+  inviterName?: string;
+}
+
 export interface NotificationInvitation {
   id: string;
   boatId: string;
   boatName: string;
+  invitedEmail: string;
   role: UserRole;
   status: BoatInvitationStatus;
   inviterName: string;
+}
+
+export interface SettlementRequest {
+  paidByUserId?: string;
+  payerUserId?: string;
+  paymentMethod?: PaymentMethod;
+  notes?: string;
+  paidAt?: string;
+  receivedAt?: string;
+}
+
+export interface RefundRequest {
+  refundAmount?: number;
+  reason?: string;
+  refundedAt?: string;
 }
 
 export interface Notification {

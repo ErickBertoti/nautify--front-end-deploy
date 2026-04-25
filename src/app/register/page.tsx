@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import {
   User,
@@ -29,7 +29,8 @@ import { CityAutocomplete } from '@/components/shared/CityAutocomplete';
 import { persistBackendToken } from '@/lib/auth-state';
 import { isValidCPF, isValidCNPJ, isValidEmail, isValidPhone, getPasswordStrength } from '@/lib/validators';
 import { PasswordStrengthBar } from '@/components/shared/PasswordStrengthBar';
-import { clearPendingRegistration, savePendingRegistration, startGoogleOAuth } from '@/lib/auth-flow';
+import { buildAuthCallbackUrl, clearPendingRegistration, savePendingRegistration, startGoogleOAuth } from '@/lib/auth-flow';
+import { maskPhone } from '@/lib/form-formatters';
 import { createClient } from '@/utils/supabase/client';
 import { authService } from '@/services';
 
@@ -62,14 +63,6 @@ function maskCEP(value: string) {
     .replace(/(\d{5})(\d)/, '$1-$2');
 }
 
-function maskPhone(value: string) {
-  return value
-    .replace(/\D/g, '')
-    .slice(0, 11)
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{5})(\d)/, '$1-$2');
-}
-
 // ============================================
 // Constants (outside component — stable refs)
 // ============================================
@@ -83,8 +76,9 @@ const STEPS = [
 // ============================================
 // Component
 // ============================================
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -116,6 +110,7 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [isCepLoading, setIsCepLoading] = useState(false);
+  const redirectTarget = searchParams.get('redirect') || '/dashboard';
   const hasReadAllDocs = readDocs.uso && readDocs.privacidade && readDocs.cadastro;
   const canEnableTermsAcceptance = hasReadAllDocs || skipReadingTerms;
 
@@ -229,7 +224,7 @@ export default function RegisterPage() {
     setSubmitError('');
 
     try {
-      await startGoogleOAuth('/dashboard');
+      await startGoogleOAuth(redirectTarget);
     } catch (googleError) {
       setSubmitError(googleError instanceof Error ? googleError.message : 'Erro ao iniciar cadastro com Google');
       setIsGoogleLoading(false);
@@ -269,7 +264,7 @@ export default function RegisterPage() {
         email: form.email,
         password: form.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: buildAuthCallbackUrl(redirectTarget),
         },
       });
 
@@ -325,7 +320,7 @@ export default function RegisterPage() {
 
       persistBackendToken(res.data.token);
       clearPendingRegistration();
-      router.push('/dashboard');
+      router.push(redirectTarget);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Erro ao criar conta');
       setIsLoading(false);
@@ -824,9 +819,9 @@ export default function RegisterPage() {
           <div className="mt-6 text-center animate-fade-in" style={{ animationDelay: '300ms' }}>
             <p className="text-sm text-muted-foreground">
               Já tem uma conta?{' '}
-              <Link href="/login" className="text-primary font-medium hover:underline hover:text-primary/80 transition-colors">
-                Fazer login
-              </Link>
+                <Link href={`/login?redirect=${encodeURIComponent(redirectTarget)}`} className="text-primary font-medium hover:underline hover:text-primary/80 transition-colors">
+                  Fazer login
+                </Link>
             </p>
           </div>
 
@@ -1028,5 +1023,13 @@ export default function RegisterPage() {
         </Modal>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }
