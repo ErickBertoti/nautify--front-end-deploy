@@ -246,7 +246,7 @@ export default function SociosPage() {
         paidByUserId: contributionPaymentForm.paidByUserId || undefined,
         paymentMethod: contributionPaymentForm.paymentMethod || undefined,
         notes: contributionPaymentForm.notes || undefined,
-        paidAt: contributionPaymentForm.paidAt ? `${contributionPaymentForm.paidAt}T00:00:00Z` : undefined,
+        paidAt: contributionPaymentForm.paidAt ? `${contributionPaymentForm.paidAt}T00:00:00-03:00` : undefined,
       });
       setContributionToPay(null);
       setContributionPaymentForm(initialContributionPaymentForm);
@@ -267,7 +267,7 @@ export default function SociosPage() {
       await partnerService.refundContribution(contributionToRefund.id, {
         refundAmount: parseCurrencyInput(contributionRefundForm.refundAmount),
         reason: contributionRefundForm.reason || undefined,
-        refundedAt: contributionRefundForm.refundedAt ? `${contributionRefundForm.refundedAt}T00:00:00Z` : undefined,
+        refundedAt: contributionRefundForm.refundedAt ? `${contributionRefundForm.refundedAt}T00:00:00-03:00` : undefined,
       });
       setContributionToRefund(null);
       setContributionRefundForm(initialContributionRefundForm);

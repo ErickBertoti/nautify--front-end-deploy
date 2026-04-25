@@ -224,7 +224,7 @@ export default function DespesasPage() {
         paidByUserId: paymentForm.paidByUserId || undefined,
         paymentMethod: paymentForm.paymentMethod || undefined,
         notes: paymentForm.notes || undefined,
-        paidAt: paymentForm.paidAt ? `${paymentForm.paidAt}T00:00:00Z` : undefined,
+        paidAt: paymentForm.paidAt ? `${paymentForm.paidAt}T00:00:00-03:00` : undefined,
       });
       setExpenseToPay(null);
       setPaymentForm(initialPaymentForm);
@@ -245,7 +245,7 @@ export default function DespesasPage() {
       await expenseService.refund(expenseToRefund.id, {
         refundAmount: parseCurrencyInput(refundForm.refundAmount),
         reason: refundForm.reason || undefined,
-        refundedAt: refundForm.refundedAt ? `${refundForm.refundedAt}T00:00:00Z` : undefined,
+        refundedAt: refundForm.refundedAt ? `${refundForm.refundedAt}T00:00:00-03:00` : undefined,
       });
       setExpenseToRefund(null);
       setRefundForm(initialRefundForm);

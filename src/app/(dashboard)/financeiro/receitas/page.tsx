@@ -222,7 +222,7 @@ export default function ReceitasPage() {
         payerUserId: receiveForm.payerUserId || undefined,
         paymentMethod: receiveForm.paymentMethod || undefined,
         notes: receiveForm.notes || undefined,
-        receivedAt: receiveForm.receivedAt ? `${receiveForm.receivedAt}T00:00:00Z` : undefined,
+        receivedAt: receiveForm.receivedAt ? `${receiveForm.receivedAt}T00:00:00-03:00` : undefined,
       });
       setRevenueToReceive(null);
       setReceiveForm(initialReceiveForm);
@@ -243,7 +243,7 @@ export default function ReceitasPage() {
       await revenueService.refund(revenueToRefund.id, {
         refundAmount: parseCurrencyInput(refundForm.refundAmount),
         reason: refundForm.reason || undefined,
-        refundedAt: refundForm.refundedAt ? `${refundForm.refundedAt}T00:00:00Z` : undefined,
+        refundedAt: refundForm.refundedAt ? `${refundForm.refundedAt}T00:00:00-03:00` : undefined,
       });
       setRevenueToRefund(null);
       setRefundForm(initialRefundForm);
