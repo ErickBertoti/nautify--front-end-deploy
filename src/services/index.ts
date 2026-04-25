@@ -34,6 +34,8 @@ import type {
   AdminPlanUpdateResult,
   ApiResponse,
   PaginatedResponse,
+  SettlementRequest,
+  RefundRequest,
 } from '@/types';
 
 // ============================================
@@ -154,7 +156,9 @@ export const expenseService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/expenses/${id}`),
 
-  markAsPaid: (id: string) => api.patch<ApiResponse<Expense>>(`/expenses/${id}/pay`, {}),
+  markAsPaid: (id: string, data: SettlementRequest) => api.patch<ApiResponse<Expense>>(`/expenses/${id}/pay`, data),
+
+  refund: (id: string, data: RefundRequest) => api.patch<ApiResponse<Expense>>(`/expenses/${id}/refund`, data),
 };
 
 // ============================================
@@ -180,7 +184,9 @@ export const revenueService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/revenues/${id}`),
 
-  markAsReceived: (id: string) => api.patch<ApiResponse<Revenue>>(`/revenues/${id}/receive`, {}),
+  markAsReceived: (id: string, data: SettlementRequest) => api.patch<ApiResponse<Revenue>>(`/revenues/${id}/receive`, data),
+
+  refund: (id: string, data: RefundRequest) => api.patch<ApiResponse<Revenue>>(`/revenues/${id}/refund`, data),
 };
 
 // ============================================
@@ -305,6 +311,8 @@ export const maintenanceService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/maintenances/${id}`),
 
+  cancel: (id: string) => api.patch<ApiResponse<Maintenance>>(`/maintenances/${id}/cancel`, {}),
+
   complete: (id: string, data: { actualCost?: number; notes?: string }) =>
     api.patch<ApiResponse<Maintenance>>(`/maintenances/${id}/complete`, data),
 
@@ -381,8 +389,11 @@ export const partnerService = {
     return api.get<PaginatedResponse<PartnerContribution>>(`/contributions?${query.toString()}`);
   },
 
-  payContribution: (contributionId: string) =>
-    api.patch<ApiResponse<PartnerContribution>>(`/contributions/${contributionId}/pay`, {}),
+  payContribution: (contributionId: string, data: SettlementRequest) =>
+    api.patch<ApiResponse<PartnerContribution>>(`/contributions/${contributionId}/pay`, data),
+
+  refundContribution: (contributionId: string, data: RefundRequest) =>
+    api.patch<ApiResponse<PartnerContribution>>(`/contributions/${contributionId}/refund`, data),
 
   generateContributions: () =>
     api.post<ApiResponse<{ month: string; generated: number }>>('/contributions/generate', {}),

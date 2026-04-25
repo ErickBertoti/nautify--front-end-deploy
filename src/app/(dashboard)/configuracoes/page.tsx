@@ -235,7 +235,7 @@ export default function ConfiguracoesPage() {
 
   async function handleAvatarConfirm(croppedBlob: Blob) {
     if (!userData) {
-      toast.error('Nao foi possivel identificar o usuario atual.');
+      toast.error('Não foi possível identificar o usuário atual.');
       return;
     }
 
@@ -383,8 +383,8 @@ export default function ConfiguracoesPage() {
         await refreshProfileViews();
       }
       toast.success('Alterações salvas com sucesso!');
-    } catch {
-      toast.error('Erro ao salvar alterações');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao salvar alterações'));
     } finally {
       setIsSaving(false);
     }
