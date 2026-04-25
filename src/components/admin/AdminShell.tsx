@@ -24,8 +24,8 @@ import { useUser } from '@/contexts/UserContext';
 const navItems = [
   { label: 'Overview', href: '/admin', icon: LayoutDashboard },
   { label: 'Clientes', href: '/admin/clientes', icon: Users },
-  { label: 'Cobrancas', href: '/admin/cobrancas', icon: CreditCard },
-  { label: 'Promocoes', href: '/admin/promocoes', icon: Tags },
+  { label: 'Cobranças', href: '/admin/cobrancas', icon: CreditCard },
+  { label: 'Promoções', href: '/admin/promocoes', icon: Tags },
   { label: 'Planos', href: '/admin/planos', icon: Layers3 },
   { label: 'Auditoria', href: '/admin/auditoria', icon: ScrollText },
 ];

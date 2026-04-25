@@ -177,9 +177,9 @@ export default function AssinaturasPage() {
         return;
       }
 
-      toast.error('Link de pagamento nao disponivel.');
-    } catch {
-      toast.error('Erro ao buscar link de pagamento.');
+      toast.error('Link de pagamento não disponível.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao buscar link de pagamento.'));
     } finally {
       setPayingId(null);
     }
@@ -194,8 +194,8 @@ export default function AssinaturasPage() {
       toast.success('Assinatura cancelada com sucesso!');
       setSubscriptionToCancel(null);
       await loadSubscriptions({ silent: true });
-    } catch {
-      toast.error('Erro ao cancelar assinatura.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao cancelar assinatura.'));
     } finally {
       setCancelingId(null);
     }
@@ -308,7 +308,7 @@ export default function AssinaturasPage() {
             {subscriptionList.map((subscription) => {
               const status = SUBSCRIPTION_STATUS_META[subscription.status];
               const planName = subscription.plan?.name || 'Plano Nautify';
-              const boatName = subscription.boatName || `Embarcacao ${subscription.boatId.slice(0, 8)}`;
+              const boatName = subscription.boatName || `Embarcação ${subscription.boatId.slice(0, 8)}`;
               const isCanceling = cancelingId === subscription.id;
               const trialEndsAtDate = subscription.trialEndsAt ? parseISO(subscription.trialEndsAt) : null;
               const trialDaysLeft = trialEndsAtDate ? differenceInDays(trialEndsAtDate, new Date()) : 0;
@@ -347,14 +347,14 @@ export default function AssinaturasPage() {
                         <p className="mt-2 text-lg font-bold text-foreground">{formatCurrency(subscription.value)}</p>
                       </div>
                       <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proximo vencimento</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Próximo vencimento</p>
                         <p className="mt-2 text-lg font-bold text-foreground">
                           {subscription.nextDueDate ? formatDate(subscription.nextDueDate) : '-'}
                         </p>
                       </div>
                       <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobranca</p>
-                        <p className="mt-2 text-lg font-bold text-foreground">{subscription.billingType === 'CREDIT_CARD' ? 'Cartao de Credito'
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobrança</p>
+                        <p className="mt-2 text-lg font-bold text-foreground">{subscription.billingType === 'CREDIT_CARD' ? 'Cartão de Crédito'
                           : subscription.billingType === 'BOLETO' ? 'Boleto'
                           : subscription.billingType === 'PIX' ? 'Pix'
                           : subscription.billingType === 'UNDEFINED' ? 'A definir'

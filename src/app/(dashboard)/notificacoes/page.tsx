@@ -32,15 +32,15 @@ import { EmptyState } from '@/components/shared/EmptyState';
 const typeConfig: Record<string, { label: string; icon: typeof Bell; color: string; bgColor: string }> = {
   financeiro: { label: 'Financeiro', icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   documento: { label: 'Documento', icon: FileText, color: 'text-amber-600', bgColor: 'bg-amber-50' },
-  manutencao: { label: 'Manutencao', icon: Wrench, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+  manutencao: { label: 'Manutenção', icon: Wrench, color: 'text-blue-600', bgColor: 'bg-blue-50' },
   agenda: { label: 'Agenda', icon: Calendar, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-  embarcacao: { label: 'Embarcacao', icon: Ship, color: 'text-nautify-700', bgColor: 'bg-nautify-50' },
+  embarcacao: { label: 'Embarcação', icon: Ship, color: 'text-nautify-700', bgColor: 'bg-nautify-50' },
   sistema: { label: 'Sistema', icon: Info, color: 'text-gray-600', bgColor: 'bg-gray-100' },
 };
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
   alta: { label: 'Alta', color: 'bg-red-50 text-red-700' },
-  media: { label: 'Media', color: 'bg-amber-50 text-amber-700' },
+  media: { label: 'Média', color: 'bg-amber-50 text-amber-700' },
   baixa: { label: 'Baixa', color: 'bg-gray-100 text-gray-600' },
 };
 
@@ -158,7 +158,7 @@ export default function NotificacoesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Notificacoes</h1>
+          <h1 className="text-2xl font-bold">Notificações</h1>
           <p className="text-muted-foreground">Central de avisos e alertas</p>
         </div>
         {markableUnread > 0 && (
@@ -169,9 +169,9 @@ export default function NotificacoesPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Nao Lidas" value={String(unread)} subtitle="notificacoes" icon={Bell} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
+        <StatCard title="Não Lidas" value={String(unread)} subtitle="notificações" icon={Bell} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
         <StatCard title="Prioridade Alta" value={String(highPriority)} subtitle="pendentes" icon={AlertTriangle} iconBgColor="bg-red-50" iconColor="text-red-600" />
-        <StatCard title="Total" value={String(notifications.length)} subtitle="notificacoes" icon={BellOff} iconBgColor="bg-gray-100" iconColor="text-gray-600" />
+        <StatCard title="Total" value={String(notifications.length)} subtitle="notificações" icon={BellOff} iconBgColor="bg-gray-100" iconColor="text-gray-600" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -179,14 +179,14 @@ export default function NotificacoesPage() {
           <option value="todos">Todos os tipos</option>
           <option value="financeiro">Financeiro</option>
           <option value="documento">Documento</option>
-          <option value="manutencao">Manutencao</option>
+          <option value="manutencao">Manutenção</option>
           <option value="agenda">Agenda</option>
-          <option value="embarcacao">Embarcacao</option>
+          <option value="embarcacao">Embarcação</option>
           <option value="sistema">Sistema</option>
         </Select>
         <Select value={readFilter} onChange={(e) => setReadFilter(e.target.value)}>
           <option value="todos">Todas</option>
-          <option value="nao-lidas">Nao lidas</option>
+          <option value="nao-lidas">Não lidas</option>
           <option value="lidas">Lidas</option>
         </Select>
       </div>
