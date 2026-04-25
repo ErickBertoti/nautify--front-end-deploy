@@ -154,7 +154,7 @@ export default function AssinaturasPage() {
       subscription.status === 'overdue' ||
       (subscription.status === 'trialing' &&
         subscription.trialEndsAt &&
-        differenceInDays(parseISO(subscription.trialEndsAt), new Date()) <= 0),
+        parseISO(subscription.trialEndsAt).getTime() <= Date.now()),
   ).length;
   const canceledCount = subscriptionList.filter((subscription) => subscription.status === 'canceled').length;
   const activeValue = subscriptionList
@@ -207,7 +207,8 @@ export default function AssinaturasPage() {
       await subscriptionService.activate(id);
       const { data } = await subscriptionService.getPaymentLink(id);
       if (data.invoiceUrl) {
-        window.open(data.invoiceUrl, '_blank');
+        window.location.assign(data.invoiceUrl);
+        return;
       }
       await loadSubscriptions({ silent: true });
     } catch (err) {
@@ -309,10 +310,9 @@ export default function AssinaturasPage() {
               const planName = subscription.plan?.name || 'Plano Nautify';
               const boatName = subscription.boatName || `Embarcacao ${subscription.boatId.slice(0, 8)}`;
               const isCanceling = cancelingId === subscription.id;
-              const trialDaysLeft = subscription.trialEndsAt
-                ? differenceInDays(parseISO(subscription.trialEndsAt), new Date())
-                : 0;
-              const isTrialExpired = trialDaysLeft <= 0;
+              const trialEndsAtDate = subscription.trialEndsAt ? parseISO(subscription.trialEndsAt) : null;
+              const trialDaysLeft = trialEndsAtDate ? differenceInDays(trialEndsAtDate, new Date()) : 0;
+              const isTrialExpired = trialEndsAtDate ? trialEndsAtDate.getTime() <= Date.now() : false;
 
               return (
                 <Card key={subscription.id} className="border-border/60">
@@ -327,17 +327,15 @@ export default function AssinaturasPage() {
                         {status.label}
                       </div>
                       {subscription.status === 'trialing' && subscription.trialEndsAt && (
-                        <div className="text-xs mt-1">
-                          {trialDaysLeft > 0
-                            ? `${trialDaysLeft} dias restantes de trial`
-                            : 'Trial expirado'
-                          }
-                        </div>
-                      )}
-                      {subscription.status === 'trialing' && isTrialExpired && (
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-red-500/15 text-red-400 border-red-500/30 mt-1">
-                          Trial expirado
-                        </div>
+                        isTrialExpired ? (
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-red-500/15 text-red-400 border-red-500/30 mt-1">
+                            Trial expirado
+                          </div>
+                        ) : (
+                          <div className="text-xs mt-1">
+                            {trialDaysLeft} dias restantes de trial
+                          </div>
+                        )
                       )}
                     </div>
                   </CardHeader>
