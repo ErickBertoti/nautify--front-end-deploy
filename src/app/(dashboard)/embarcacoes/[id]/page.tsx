@@ -231,7 +231,7 @@ export default function BoatDetailsPage() {
                  </Button>
                )}
                {canDeleteBoat && (
-                 <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 border-destructive/20 hover:border-destructive/30" onClick={() => setShowDeleteConfirm(true)}>
+                 <Button variant="outline" className="w-full sm:w-auto h-10 shadow-sm text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 dark:hover:text-red-300 border-destructive/20 hover:border-destructive/30" onClick={() => setShowDeleteConfirm(true)}>
                    <Trash2 className="h-4 w-4" />
                  </Button>
                )}
@@ -573,7 +573,7 @@ export default function BoatDetailsPage() {
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
-            <Button variant="outline" className="text-destructive hover:bg-red-50 hover:text-red-700 border-destructive/30" onClick={handleDelete} disabled={actionLoading}>
+            <Button variant="outline" className="text-destructive hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 dark:hover:text-red-300 border-destructive/30" onClick={handleDelete} disabled={actionLoading}>
               {actionLoading ? 'Excluindo...' : 'Excluir'}
             </Button>
           </div>

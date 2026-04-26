@@ -16,9 +16,9 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { Input, Textarea } from '@/components/ui/Input';
+import { Input, Select, Textarea } from '@/components/ui/Input';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { formatDate, formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats, useBoatMembers } from '@/hooks/useEntityOptions';
 import { useHasAnyBoat } from '@/hooks/useBoatPermissions';
@@ -26,10 +26,14 @@ import { tripService } from '@/services';
 import type { Trip } from '@/types';
 
 const statusColors: Record<string, string> = {
-  agendada: 'bg-amber-50 text-amber-700 border-amber-200',
-  em_andamento: 'bg-blue-50 text-blue-700 border-blue-200',
-  finalizada: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  com_ocorrencia: 'bg-red-50 text-red-700 border-red-200',
+  agendada:
+    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30',
+  em_andamento:
+    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30',
+  finalizada:
+    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30',
+  com_ocorrencia:
+    'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30',
 };
 
 const statusLabels: Record<string, string> = {
@@ -61,7 +65,7 @@ export default function SaidasPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -69,9 +73,11 @@ export default function SaidasPage() {
 
   if (error || !trips) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-2">
+      <div className="flex h-64 flex-col items-center justify-center gap-2">
         <p className="text-muted-foreground">{error || 'Erro ao carregar saídas'}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          Tentar novamente
+        </Button>
       </div>
     );
   }
@@ -103,6 +109,7 @@ export default function SaidasPage() {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
+
     await tripService.create({
       boatId: formData.get('boatId') as string,
       type: formData.get('type') as Trip['type'],
@@ -111,29 +118,33 @@ export default function SaidasPage() {
       sailorId: formData.get('sailorId') as string,
       observations: (formData.get('observations') as string) || undefined,
     });
+
     setShowAddModal(false);
+    setSelectedBoatId('');
     refetch();
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Saídas</h1>
-          <p className="text-muted-foreground">Registro e acompanhamento de saídas das embarcações</p>
+          <p className="text-muted-foreground">
+            Registro e acompanhamento de saídas das embarcações
+          </p>
         </div>
-        {canWrite && <Button onClick={() => setShowAddModal(true)}>
-          <Plus className="h-4 w-4" />
-          Nova Saída
-        </Button>}
+        {canWrite && (
+          <Button onClick={() => setShowAddModal(true)}>
+            <Plus className="h-4 w-4" />
+            Nova Saída
+          </Button>
+        )}
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-amber-500" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="h-3 w-3 rounded-full bg-amber-500" />
             <div>
               <p className="text-xs text-muted-foreground">Agendadas</p>
               <p className="text-lg font-bold">
@@ -143,8 +154,8 @@ export default function SaidasPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="h-3 w-3 animate-pulse rounded-full bg-blue-500" />
             <div>
               <p className="text-xs text-muted-foreground">Em andamento</p>
               <p className="text-lg font-bold">
@@ -154,8 +165,8 @@ export default function SaidasPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="h-3 w-3 rounded-full bg-emerald-500" />
             <div>
               <p className="text-xs text-muted-foreground">Finalizadas</p>
               <p className="text-lg font-bold">
@@ -165,8 +176,8 @@ export default function SaidasPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="h-3 w-3 rounded-full bg-red-500" />
             <div>
               <p className="text-xs text-muted-foreground">Com ocorrência</p>
               <p className="text-lg font-bold">
@@ -177,53 +188,57 @@ export default function SaidasPage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Buscar saída..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex h-10 w-full rounded-lg border border-input bg-transparent pl-10 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex h-10 w-full rounded-lg border border-input bg-background/50 py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
-        <select
+        <Select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full sm:w-auto"
         >
           <option value="todos">Todos os status</option>
           <option value="agendada">Agendada</option>
           <option value="em_andamento">Em andamento</option>
           <option value="finalizada">Finalizada</option>
           <option value="com_ocorrencia">Com ocorrência</option>
-        </select>
+        </Select>
       </div>
 
-      {/* List */}
       {filtered.length > 0 ? (
         <div className="space-y-3">
           {filtered.map((trip) => (
-            <Card key={trip.id} className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card key={trip.id} className="cursor-pointer transition-shadow hover:shadow-md">
               <CardContent className="p-5">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-4">
                     <div
-                      className={`flex items-center justify-center w-12 h-12 rounded-xl ${
-                        trip.status === 'agendada' ? 'bg-amber-50'
-                          : trip.status === 'em_andamento' ? 'bg-blue-50'
-                          : trip.status === 'com_ocorrencia' ? 'bg-red-50'
-                          : 'bg-emerald-50'
+                      className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                        trip.status === 'agendada'
+                          ? 'bg-amber-50 dark:bg-amber-500/15'
+                          : trip.status === 'em_andamento'
+                            ? 'bg-blue-50 dark:bg-blue-500/15'
+                            : trip.status === 'com_ocorrencia'
+                              ? 'bg-red-50 dark:bg-red-500/15'
+                              : 'bg-emerald-50 dark:bg-emerald-500/15'
                       }`}
                     >
                       <Ship
                         className={`h-6 w-6 ${
-                          trip.status === 'agendada' ? 'text-amber-600'
-                            : trip.status === 'em_andamento' ? 'text-blue-600'
-                            : trip.status === 'com_ocorrencia' ? 'text-red-600'
-                            : 'text-emerald-600'
+                          trip.status === 'agendada'
+                            ? 'text-amber-600 dark:text-amber-300'
+                            : trip.status === 'em_andamento'
+                              ? 'text-blue-600 dark:text-blue-300'
+                              : trip.status === 'com_ocorrencia'
+                                ? 'text-red-600 dark:text-red-300'
+                                : 'text-emerald-600 dark:text-emerald-300'
                         }`}
                       />
                     </div>
@@ -238,10 +253,11 @@ export default function SaidasPage() {
                             statusColors[trip.status]
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusDots[trip.status]}`} />
+                          <span className={`h-1.5 w-1.5 rounded-full ${statusDots[trip.status]}`} />
                           {statusLabels[trip.status]}
                         </span>
                       </div>
+
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5" />
@@ -254,6 +270,7 @@ export default function SaidasPage() {
                           </span>
                         )}
                       </div>
+
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         {trip.responsibleUser && (
                           <span className="flex items-center gap-1.5">
@@ -268,24 +285,36 @@ export default function SaidasPage() {
                           </span>
                         )}
                       </div>
+
                       {trip.observations && (
-                        <p className="text-sm text-muted-foreground italic mt-1">
+                        <p className="mt-1 text-sm italic text-muted-foreground">
                           &ldquo;{trip.observations}&rdquo;
                         </p>
                       )}
-                      {canWrite && (trip.status === 'agendada' || trip.status === 'em_andamento') && (
-                        <div className="flex gap-2 mt-2">
-                          {trip.status === 'agendada' && (
-                            <Button size="sm" onClick={() => handleStart(trip.id)}>Iniciar</Button>
-                          )}
-                          {trip.status === 'em_andamento' && (
-                            <Button size="sm" onClick={() => handleFinish(trip.id)}>Finalizar</Button>
-                          )}
-                          <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-600" onClick={() => handleCancel(trip.id)}>
-                            Ocorrência
-                          </Button>
-                        </div>
-                      )}
+
+                      {canWrite &&
+                        (trip.status === 'agendada' || trip.status === 'em_andamento') && (
+                          <div className="mt-2 flex gap-2">
+                            {trip.status === 'agendada' && (
+                              <Button size="sm" onClick={() => handleStart(trip.id)}>
+                                Iniciar
+                              </Button>
+                            )}
+                            {trip.status === 'em_andamento' && (
+                              <Button size="sm" onClick={() => handleFinish(trip.id)}>
+                                Finalizar
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                              onClick={() => handleCancel(trip.id)}
+                            >
+                              Ocorrência
+                            </Button>
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -303,53 +332,76 @@ export default function SaidasPage() {
         />
       )}
 
-      {/* Add Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => {
+          setShowAddModal(false);
+          setSelectedBoatId('');
+        }}
         title="Nova Saída"
         description="Registre uma nova saída de embarcação"
       >
-        <form className="space-y-4 mt-4" onSubmit={handleCreate}>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Embarcação</label>
-            <select
-              name="boatId"
-              className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={selectedBoatId}
-              onChange={(e) => setSelectedBoatId(e.target.value)}
-            >
-              <option value="">Selecione...</option>
-              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}{b.model ? ` — ${b.model}` : ''}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-foreground">Tipo</label>
-              <select name="type" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="uso">Uso (Sócio)</option>
-                <option value="teste">Teste (Operacional)</option>
-              </select>
-            </div>
+        <form className="mt-4 space-y-4" onSubmit={handleCreate}>
+          <Select
+            name="boatId"
+            label="Embarcação"
+            value={selectedBoatId}
+            onChange={(e) => setSelectedBoatId(e.target.value)}
+          >
+            <option value="">Selecione...</option>
+            {boats.map((boat) => (
+              <option key={boat.id} value={boat.id}>
+                {boat.name}
+                {boat.model ? ` - ${boat.model}` : ''}
+              </option>
+            ))}
+          </Select>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Select name="type" label="Tipo">
+              <option value="uso">Uso (Sócio)</option>
+              <option value="teste">Teste (Operacional)</option>
+            </Select>
             <Input label="Data/Hora Saída" name="startDate" type="datetime-local" required />
           </div>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Sócio Responsável</label>
-            <select name="responsibleUserId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="">{selectedBoatId ? 'Selecione...' : 'Selecione a embarcação primeiro'}</option>
-              {socios.map((m) => <option key={m.id} value={m.user.id}>{m.user.name}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Marinheiro</label>
-            <select name="sailorId" className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="">{selectedBoatId ? 'Nenhum (opcional)' : 'Selecione a embarcação primeiro'}</option>
-              {sailors.map((m) => <option key={m.id} value={m.user.id}>{m.user.name}</option>)}
-            </select>
-          </div>
-          <Textarea label="Observações" name="observations" placeholder="Destino, propósito, etc. (opcional)" />
+
+          <Select name="responsibleUserId" label="Sócio Responsável">
+            <option value="">
+              {selectedBoatId ? 'Selecione...' : 'Selecione a embarcação primeiro'}
+            </option>
+            {socios.map((member) => (
+              <option key={member.id} value={member.user.id}>
+                {member.user.name}
+              </option>
+            ))}
+          </Select>
+
+          <Select name="sailorId" label="Marinheiro">
+            <option value="">
+              {selectedBoatId ? 'Nenhum (opcional)' : 'Selecione a embarcação primeiro'}
+            </option>
+            {sailors.map((member) => (
+              <option key={member.id} value={member.user.id}>
+                {member.user.name}
+              </option>
+            ))}
+          </Select>
+
+          <Textarea
+            label="Observações"
+            name="observations"
+            placeholder="Destino, propósito, etc. (opcional)"
+          />
+
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => {
+                setShowAddModal(false);
+                setSelectedBoatId('');
+              }}
+            >
               Cancelar
             </Button>
             <Button type="submit">Registrar Saída</Button>

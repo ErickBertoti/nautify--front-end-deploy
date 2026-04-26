@@ -39,15 +39,15 @@ import type { Partner, PartnerContribution, PaymentMethod, UserRole } from '@/ty
 type PaymentMethodSelection = PaymentMethod | '';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-  ativo: { label: 'Ativo', color: 'bg-emerald-50 text-emerald-700' },
-  inativo: { label: 'Inativo', color: 'bg-gray-100 text-gray-700' },
-  suspenso: { label: 'Suspenso', color: 'bg-red-50 text-red-700' },
+  ativo: { label: 'Ativo', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  inativo: { label: 'Inativo', color: 'bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300' },
+  suspenso: { label: 'Suspenso', color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300' },
 };
 
 const contribStatusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  pago: { label: 'Pago', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle },
-  pendente: { label: 'Pendente', color: 'bg-amber-50 text-amber-700', icon: Clock },
-  atrasado: { label: 'Atrasado', color: 'bg-red-50 text-red-700', icon: AlertCircle },
+  pago: { label: 'Pago', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', icon: CheckCircle },
+  pendente: { label: 'Pendente', color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', icon: Clock },
+  atrasado: { label: 'Atrasado', color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300', icon: AlertCircle },
 };
 
 const roleLabels: Record<UserRole, string> = {
@@ -331,10 +331,10 @@ export default function SociosPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Sócios ativos" value={String(ativos)} subtitle="participantes" icon={UserCheck} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Total sócios" value={String(partners.length)} subtitle="cadastrados" icon={Users} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
-        <StatCard title="Contribuições" value={formatCurrency(totalContrib)} subtitle="lançadas" icon={DollarSign} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-        <StatCard title="Pendentes" value={formatCurrency(totalPending)} subtitle="a receber" icon={AlertCircle} iconBgColor="bg-amber-50" iconColor="text-amber-600" />
+        <StatCard title="Sócios ativos" value={String(ativos)} subtitle="participantes" icon={UserCheck} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+        <StatCard title="Total sócios" value={String(partners.length)} subtitle="cadastrados" icon={Users} iconBgColor="bg-nautify-50 dark:bg-nautify-500/15" iconColor="text-nautify-700 dark:text-nautify-300" />
+        <StatCard title="Contribuições" value={formatCurrency(totalContrib)} subtitle="lançadas" icon={DollarSign} iconBgColor="bg-blue-50 dark:bg-blue-500/15" iconColor="text-blue-600 dark:text-blue-300" />
+        <StatCard title="Pendentes" value={formatCurrency(totalPending)} subtitle="a receber" icon={AlertCircle} iconBgColor="bg-amber-50 dark:bg-amber-500/15" iconColor="text-amber-600 dark:text-amber-300" />
       </div>
 
       <div className="flex gap-1 border-b border-border">
@@ -360,7 +360,7 @@ export default function SociosPage() {
                 <Card key={partner.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-5">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-full bg-nautify-100 flex items-center justify-center text-nautify-700 font-bold text-sm shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-nautify-100 dark:bg-nautify-500/15 flex items-center justify-center text-nautify-700 dark:text-nautify-300 font-bold text-sm shrink-0">
                         {getInitials(partner.user.name)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -392,12 +392,11 @@ export default function SociosPage() {
                             <p className="text-sm font-bold">{partner.pendingPayments}</p>
                           </div>
                         </div>
-
                         {canManagePartners && (
                           <div className="mt-3 flex justify-end gap-2">
                             <Button variant="ghost" size="sm" onClick={() => openEditPartnerModal(partner)}>Editar</Button>
                             {partner.status === 'ativo' && (
-                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600" onClick={() => setPartnerToDeactivate(partner)}>
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-600 dark:hover:text-red-300" onClick={() => setPartnerToDeactivate(partner)}>
                                 <UserX className="h-3.5 w-3.5 mr-1" /> Desativar
                               </Button>
                             )}

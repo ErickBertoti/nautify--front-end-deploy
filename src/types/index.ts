@@ -194,6 +194,14 @@ export interface Trip {
 
 // --- Abastecimentos / Combustível ---
 export type FuelAssociation = 'socio' | 'teste';
+export type FuelType = 'gasolina' | 'diesel';
+
+export interface FuelBreakdownItem {
+  fuelType: FuelType;
+  liters: number;
+  totalValue: number;
+  pricePerLiter: number;
+}
 
 export interface Fueling {
   id: string;
@@ -203,6 +211,7 @@ export interface Fueling {
   liters: number;
   totalValue: number;
   pricePerLiter?: number;
+  fuelBreakdown?: FuelBreakdownItem[];
   associationType: FuelAssociation;
   associatedUserId?: string;
   associatedUser?: User;
@@ -460,6 +469,8 @@ export interface DashboardStats {
   totalBoats: number;
   totalExpensesMonth: number;
   totalRevenueMonth: number;
+  totalFuelCostMonth: number;
+  totalFuelLitersMonth: number;
   totalTripsMonth: number;
   pendingIncidents: number;
   pendingMaintenances: number;
@@ -469,6 +480,7 @@ export interface DashboardStats {
   revenueChangePercent: number;
   expensesChangePercent: number;
   upcomingExpenses: Expense[];
+  recentFuelings: Fueling[];
   recentTrips: Trip[];
   recentIncidents: Incident[];
   upcomingEvents: CalendarEvent[];

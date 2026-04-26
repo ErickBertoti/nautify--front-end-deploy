@@ -33,11 +33,11 @@ import type { PaymentMethod, Revenue, RevenueCategory } from '@/types';
 type PaymentMethodSelection = PaymentMethod | '';
 
 const categoryColors: Record<RevenueCategory, string> = {
-  mensalidade: 'bg-blue-50 text-blue-700',
-  aluguel: 'bg-purple-50 text-purple-700',
-  evento: 'bg-emerald-50 text-emerald-700',
-  taxa: 'bg-amber-50 text-amber-700',
-  outro: 'bg-gray-50 text-gray-700',
+  mensalidade: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  aluguel: 'bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300',
+  evento: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  taxa: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  outro: 'bg-gray-50 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300',
 };
 
 const categoryLabels: Record<RevenueCategory, string> = {
@@ -49,9 +49,9 @@ const categoryLabels: Record<RevenueCategory, string> = {
 };
 
 const statusConfig: Record<string, { color: string; label: string }> = {
-  recebida: { color: 'bg-emerald-50 text-emerald-700', label: 'Recebida' },
-  pendente: { color: 'bg-amber-50 text-amber-700', label: 'Pendente' },
-  atrasada: { color: 'bg-red-50 text-red-700', label: 'Atrasada' },
+  recebida: { color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', label: 'Recebida' },
+  pendente: { color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', label: 'Pendente' },
+  atrasada: { color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300', label: 'Atrasada' },
 };
 
 const initialRevenueForm = {
@@ -297,10 +297,10 @@ export default function ReceitasPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total" value={formatCurrency(total)} subtitle="todas as receitas" icon={DollarSign} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
-        <StatCard title="Recebidas" value={formatCurrency(totalRecebidas)} subtitle="confirmadas" icon={CheckCircle} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Pendentes" value={formatCurrency(totalPendentes)} subtitle="aguardando" icon={Clock} iconBgColor="bg-amber-50" iconColor="text-amber-600" />
-        <StatCard title="Atrasadas" value={formatCurrency(totalAtrasadas)} subtitle="vencidas" icon={AlertCircle} iconBgColor="bg-red-50" iconColor="text-red-600" />
+        <StatCard title="Total" value={formatCurrency(total)} subtitle="todas as receitas" icon={DollarSign} iconBgColor="bg-nautify-50 dark:bg-nautify-500/15" iconColor="text-nautify-700 dark:text-nautify-300" />
+        <StatCard title="Recebidas" value={formatCurrency(totalRecebidas)} subtitle="confirmadas" icon={CheckCircle} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+        <StatCard title="Pendentes" value={formatCurrency(totalPendentes)} subtitle="aguardando" icon={Clock} iconBgColor="bg-amber-50 dark:bg-amber-500/15" iconColor="text-amber-600 dark:text-amber-300" />
+        <StatCard title="Atrasadas" value={formatCurrency(totalAtrasadas)} subtitle="vencidas" icon={AlertCircle} iconBgColor="bg-red-50 dark:bg-red-500/15" iconColor="text-red-600 dark:text-red-300" />
       </div>
 
       <Card>
