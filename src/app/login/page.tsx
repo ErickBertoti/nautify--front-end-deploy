@@ -146,17 +146,17 @@ function LoginPageContent() {
                 Nautify
               </h1>
               <p className="text-[10px] uppercase tracking-[0.2em] font-medium" style={{ color: '#eec068' }}>
-                Gestao Nautica
+                Gestão Náutica
               </p>
             </div>
           </div>
 
           <div className="max-w-lg animate-fade-up" style={{ animationDelay: '100ms' }}>
             <p className="text-xs uppercase tracking-[0.25em] mb-6 font-medium" style={{ color: '#8f9097', fontFamily: 'var(--font-sans)' }}>
-              Plataforma de Gestao
+              Plataforma de Gestão
             </p>
             <h2 className="text-5xl xl:text-6xl font-bold leading-[1.1] mb-6" style={{ color: '#dce2f7', fontFamily: 'var(--font-heading)' }}>
-              Navegue com <span style={{ color: '#eec068', fontStyle: 'italic' }}>tranquilidade</span> e seguranca
+              Navegue com <span style={{ color: '#eec068', fontStyle: 'italic' }}>tranquilidade</span> e segurança
             </h2>
             <p className="text-base leading-relaxed max-w-md" style={{ color: '#8f9097', fontFamily: 'var(--font-sans)' }}>
               Rateio automatico, controle de despesas, registro de saidas e muito mais. Tudo em uma plataforma profissional.
@@ -395,7 +395,7 @@ function LoginPageContent() {
             <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '400ms' }}>
               <p className="text-sm" style={{ color: '#8f9097' }}>
                 Nao tem uma conta?{' '}
-                <Link href="/register" className="font-medium transition-all duration-200 hover:opacity-80" style={{ color: '#eec068' }}>
+                <Link href={`/register?redirect=${encodeURIComponent(redirectTarget)}`} className="font-medium transition-all duration-200 hover:opacity-80" style={{ color: '#eec068' }}>
                   Cadastre-se
                 </Link>
               </p>

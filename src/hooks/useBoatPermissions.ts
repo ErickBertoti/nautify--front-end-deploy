@@ -11,6 +11,8 @@ export interface BoatPermissions {
   canViewCashFlow: boolean;
   canViewPartners: boolean;
   canManageFinancials: boolean;
+  canDeleteFinancials: boolean;
+  canDeleteMaintenance: boolean;
   canRegisterTrip: boolean;
   canRegisterFuel: boolean;
   canRegisterMaintenance: boolean;
@@ -35,6 +37,8 @@ export function useBoatPermissions(boatId?: string | null): BoatPermissions {
     canViewCashFlow: isFinancial,
     canViewPartners: isFinancial,
     canManageFinancials: isFinancial,
+    canDeleteFinancials: isAdmin,
+    canDeleteMaintenance: isAdmin,
     canRegisterTrip: isMember,
     canRegisterFuel: isMember,
     canRegisterMaintenance: isMember,

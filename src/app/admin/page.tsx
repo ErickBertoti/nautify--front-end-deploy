@@ -74,11 +74,11 @@ export default function AdminOverviewPage() {
                 <span className="font-semibold text-white">{data.platformAdmins}</span>
               </div>
               <div className="flex items-center justify-between rounded-2xl border border-white/6 bg-slate-950/55 px-4 py-3">
-                <span>Embarcacoes cadastradas</span>
+                <span>Embarcações cadastradas</span>
                 <span className="font-semibold text-white">{data.totalBoats}</span>
               </div>
               <div className="flex items-center justify-between rounded-2xl border border-white/6 bg-slate-950/55 px-4 py-3">
-                <span>Promocoes ativas</span>
+                <span>Promoções ativas</span>
                 <span className="font-semibold text-white">{data.activePromotions}</span>
               </div>
             </CardContent>

@@ -55,9 +55,7 @@ export async function proxy(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     user = currentUser;
-  } catch (error) {
-    console.error('Erro ao validar sessao no proxy:', error);
-
+  } catch {
     if (hasStaleNautifyAuth) {
       clearProxyAuthCookies(supabaseResponse);
     }

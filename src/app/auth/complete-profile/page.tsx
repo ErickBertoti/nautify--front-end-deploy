@@ -14,6 +14,7 @@ import { authService } from '@/services';
 import type { DocumentType } from '@/types';
 import { createClient } from '@/utils/supabase/client';
 import { isValidCNPJ, isValidCPF, isValidPhone } from '@/lib/validators';
+import { maskPhone } from '@/lib/form-formatters';
 
 function maskCPF(value: string) {
   return value
@@ -38,14 +39,6 @@ function maskCEP(value: string) {
   return value
     .replace(/\D/g, '')
     .slice(0, 8)
-    .replace(/(\d{5})(\d)/, '$1-$2');
-}
-
-function maskPhone(value: string) {
-  return value
-    .replace(/\D/g, '')
-    .slice(0, 11)
-    .replace(/(\d{2})(\d)/, '($1) $2')
     .replace(/(\d{5})(\d)/, '$1-$2');
 }
 

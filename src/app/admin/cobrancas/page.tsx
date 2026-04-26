@@ -156,8 +156,8 @@ export default function AdminCobrancasPage() {
     <div className="space-y-6">
       <AdminSectionHeader
         eyebrow="Billing Control"
-        title="Cobrancas, planos e precos efetivos"
-        description="Ajuste assinatura por assinatura, aplique promocao, troque plano e sincronize o valor real com o gateway."
+        title="Cobranças, planos e preços efetivos"
+        description="Ajuste assinatura por assinatura, aplique promoção, troque plano e sincronize o valor real com o gateway."
       />
 
       {(subscriptionsApi.error || promotionsApi.error || plansApi.error) && (
