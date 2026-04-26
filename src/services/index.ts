@@ -229,12 +229,18 @@ export const tripService = {
 
   create: (data: Partial<Trip>) => api.post<ApiResponse<Trip>>('/trips', data),
 
+  update: (id: string, data: Partial<Trip>) =>
+    api.put<ApiResponse<Trip>>(`/trips/${id}`, data),
+
   start: (id: string) => api.patch<ApiResponse<Trip>>(`/trips/${id}/start`, {}),
 
   finish: (id: string, observations?: string) =>
     api.patch<ApiResponse<Trip>>(`/trips/${id}/finish`, { observations }),
 
   cancel: (id: string) => api.patch<ApiResponse<Trip>>(`/trips/${id}/cancel`, {}),
+
+  registerOccurrence: (id: string, occurrence: string) =>
+    api.patch<ApiResponse<Trip>>(`/trips/${id}/occurrence`, { observations: occurrence }),
 };
 
 // ============================================
