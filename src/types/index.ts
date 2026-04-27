@@ -173,7 +173,7 @@ export interface CashFlowSummary {
 }
 
 // --- Saídas ---
-export type TripStatus = 'agendada' | 'em_andamento' | 'finalizada' | 'com_ocorrencia';
+export type TripStatus = 'agendada' | 'em_andamento' | 'finalizada' | 'com_ocorrencia' | 'cancelada';
 export type TripType = 'uso' | 'teste';
 
 export interface Trip {
@@ -183,13 +183,20 @@ export interface Trip {
   type: TripType;
   responsibleUserId?: string;
   responsibleUser?: User;
-  sailorId: string;
+  sailorId?: string;
   sailor?: User;
   startDate: string;
   endDate?: string;
   status: TripStatus;
   observations?: string;
+  occurrence?: string;
+  occurrenceDescription?: string;
   createdAt: string;
+}
+
+export interface TripOccurrenceResponse {
+  id: string;
+  status: TripStatus;
 }
 
 // --- Abastecimentos / Combustível ---
