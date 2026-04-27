@@ -10,6 +10,7 @@ import type {
   CashFlowSummary,
   CashFlowEntry,
   Trip,
+  TripOccurrenceResponse,
   Fueling,
   FuelConsumptionSummary,
   Incident,
@@ -240,7 +241,7 @@ export const tripService = {
   cancel: (id: string) => api.patch<ApiResponse<Trip>>(`/trips/${id}/cancel`, {}),
 
   registerOccurrence: (id: string, occurrence: string) =>
-    api.patch<ApiResponse<Trip>>(`/trips/${id}/occurrence`, { observations: occurrence }),
+    api.patch<ApiResponse<TripOccurrenceResponse>>(`/trips/${id}/occurrence`, { occurrence }),
 };
 
 // ============================================

@@ -66,6 +66,9 @@ const toDateTimeLocal = (value?: string) => {
   return value.slice(0, 16);
 };
 
+const getTripOccurrence = (trip: Trip) =>
+  (trip.occurrenceDescription || trip.occurrence || '').trim();
+
 export default function SaidasPage() {
   const [showTripModal, setShowTripModal] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -106,7 +109,7 @@ export default function SaidasPage() {
 
   const filtered = trips.filter((trip) => {
     const query = searchQuery.toLowerCase();
-    const occurrence = trip.occurrence || trip.occurrenceDescription || (trip.status === 'com_ocorrencia' ? trip.observations : '');
+    const occurrence = getTripOccurrence(trip);
     const matchesSearch =
       trip.boatName?.toLowerCase().includes(query) ||
       trip.observations?.toLowerCase().includes(query) ||
@@ -321,7 +324,7 @@ export default function SaidasPage() {
       {filtered.length > 0 ? (
         <div className="space-y-3">
           {filtered.map((trip) => {
-            const occurrence = trip.occurrence || trip.occurrenceDescription || (trip.status === 'com_ocorrencia' ? trip.observations : '');
+            const occurrence = getTripOccurrence(trip);
             const canEditTrip = canWrite && trip.status === 'agendada';
             const canStartTrip = canWrite && trip.status === 'agendada';
             const canFinishTrip = canWrite && trip.status === 'em_andamento';
@@ -404,7 +407,7 @@ export default function SaidasPage() {
                           )}
                         </div>
 
-                        {trip.observations && trip.status !== 'com_ocorrencia' && (
+                        {trip.observations && (
                           <p className="mt-1 text-sm italic text-muted-foreground">
                             &ldquo;{trip.observations}&rdquo;
                           </p>

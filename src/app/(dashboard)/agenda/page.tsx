@@ -62,6 +62,15 @@ function isEventOnDay(dateValue: string, year: number, month: number, day: numbe
   );
 }
 
+function buildTripDescription(trip: Trip) {
+  const parts: string[] = [];
+  const observations = trip.observations?.trim();
+  const occurrence = (trip.occurrenceDescription || trip.occurrence || '').trim();
+  if (observations) parts.push(`Observacoes: ${observations}`);
+  if (occurrence) parts.push(`Ocorrencia: ${occurrence}`);
+  return parts.join('\n') || undefined;
+}
+
 export default function AgendaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -99,7 +108,7 @@ export default function AgendaPage() {
       boatId: trip.boatId,
       boatName: trip.boatName,
       title: `Saida - ${trip.boatName || 'Embarcacao'}`,
-      description: trip.observations,
+      description: buildTripDescription(trip),
       type: 'reserva',
       status: trip.status === 'cancelada' ? 'cancelado' : trip.status === 'agendada' ? 'pendente' : 'confirmado',
       startDate: trip.startDate,
@@ -124,10 +133,15 @@ export default function AgendaPage() {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
+    const boatId = (formData.get('boatId') as string).trim();
+    if (!boatId) {
+      toast.warning('Selecione uma embarcacao para criar o evento');
+      return;
+    }
     await calendarService.create({
       title: formData.get('title') as string,
       type: formData.get('type') as CalendarEvent['type'],
-      boatId: (formData.get('boatId') as string) || undefined,
+      boatId,
       startDate: formData.get('startDate') as string,
       endDate: formData.get('endDate') as string,
       description: (formData.get('description') as string) || undefined,
@@ -162,7 +176,7 @@ export default function AgendaPage() {
           endDate: row['Data Fim'] || row['data_fim'] || row['endDate'] || '',
           boatId: row['Embarcacao ID'] || row['boatId'] || '',
           description: row['Descricao'] || row['descricao'] || row['description'] || '',
-        })).filter((event) => event.title && event.startDate);
+        })).filter((event) => event.title && event.startDate && event.boatId);
 
         setImportedEvents(parsed);
       } catch {
@@ -180,7 +194,7 @@ export default function AgendaPage() {
         type: (event.type || 'evento') as CalendarEvent['type'],
         startDate: event.startDate,
         endDate: event.endDate || event.startDate,
-        boatId: event.boatId || undefined,
+        boatId: event.boatId,
         description: event.description || undefined,
       }));
       const { data } = await calendarService.bulkCreate(imported);
@@ -348,6 +362,11 @@ export default function AgendaPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{event.title}</p>
+                        {event.description && (
+                          <p className="mt-0.5 text-xs text-muted-foreground whitespace-pre-line line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
                         <div className="flex items-center gap-3 mt-0.5">
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3 text-muted-foreground" />
@@ -395,8 +414,8 @@ export default function AgendaPage() {
               <option value="evento">Evento</option>
               <option value="outro">Outro</option>
             </Select>
-            <Select name="boatId" label="Embarcacao">
-              <option value="">Nenhuma</option>
+            <Select name="boatId" label="Embarcacao" required>
+              <option value="">Selecione...</option>
               {boats.map((boat) => <option key={boat.id} value={boat.id}>{boat.name}</option>)}
             </Select>
           </div>
@@ -417,7 +436,7 @@ export default function AgendaPage() {
           {importedEvents.length === 0 ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Envie uma planilha (.xlsx ou .csv) com as colunas: Titulo, Tipo, Data Inicio, Data Fim, Embarcacao ID, Descricao
+                Envie uma planilha (.xlsx ou .csv) com as colunas: Titulo, Tipo, Data Inicio, Data Fim, Embarcacao ID, Descricao. Embarcacao ID e obrigatorio.
               </p>
               <div>
                 <input

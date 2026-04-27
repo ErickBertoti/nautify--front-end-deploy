@@ -194,6 +194,11 @@ export interface Trip {
   createdAt: string;
 }
 
+export interface TripOccurrenceResponse {
+  id: string;
+  status: TripStatus;
+}
+
 // --- Abastecimentos / Combustível ---
 export type FuelAssociation = 'socio' | 'teste';
 export type FuelType = 'gasolina' | 'diesel';
