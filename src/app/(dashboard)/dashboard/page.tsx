@@ -159,7 +159,7 @@ export default function DashboardPage() {
         <StatCard
           title="Despesas do Mês"
           value={formatCurrency(stats.totalExpensesMonth)}
-          subtitle="inclui combustÃ­vel"
+          subtitle="inclui combustível"
           icon={TrendingDown}
           trend={{ value: Math.abs(stats.expensesChangePercent ?? 0), isPositive: (stats.expensesChangePercent ?? 0) <= 0 }}
           iconBgColor="bg-red-100 dark:bg-red-500/20"
@@ -207,7 +207,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-xl sm:text-2xl font-bold tracking-tight">{formatCurrency(stats.totalFuelCostMonth)}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground font-medium">
-                  CombustÃ­vel no mÃªs
+                  Combustível no mês
                 </p>
                 <p className="text-[11px] text-muted-foreground">{formatDecimal(stats.totalFuelLitersMonth)} L</p>
               </div>
@@ -426,7 +426,7 @@ export default function DashboardPage() {
             </CardTitle>
             <Link href="/combustivel">
               <Button variant="ghost" size="sm" className="hover:bg-primary/5">
-                Ver combustÃ­vel <ArrowRight className="h-4 w-4 ml-1" />
+                Ver combustível <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </Link>
           </CardHeader>
@@ -443,7 +443,7 @@ export default function DashboardPage() {
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">
-                        {fueling.boatName || 'EmbarcaÃ§Ã£o'}
+                        {fueling.boatName || 'Embarcação'}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span>{formatDate(fueling.date)}</span>
