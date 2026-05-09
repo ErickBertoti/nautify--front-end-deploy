@@ -10,6 +10,9 @@ import {
   AlertCircle,
   Loader2,
   Receipt,
+  Paperclip,
+  X,
+  FileText,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +29,7 @@ import { useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
 import { useUser } from '@/contexts/UserContext';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { expenseService } from '@/services';
+import { uploadFile } from '@/lib/storage';
 import { currencyToInputValue, formatCurrencyInput, parseCurrencyInput } from '@/lib/form-formatters';
 import { getInstallmentStrategyLabel, getPaymentMethodLabel, getRefundStatusLabel, PAYMENT_METHOD_OPTIONS } from '@/lib/financial';
 import type { Expense, ExpenseCategory, ExpenseIndividualMode, InstallmentStrategy, PaymentMethod } from '@/types';
@@ -59,7 +63,21 @@ const initialExpenseForm = {
   individualMode: 'rateado' as ExpenseIndividualMode,
   installmentStrategy: 'single' as InstallmentStrategy,
   installmentCount: '1',
+  attachmentUrl: '',
+  attachmentName: '',
+  attachmentSize: 0,
+  attachmentMimeType: '',
 };
+
+const ACCEPTED_ATTACHMENT_TYPES = '.pdf,image/png,image/jpeg,image/webp';
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+
+function formatFileSize(bytes: number) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const initialPaymentForm = {
   paidByUserId: '',
@@ -86,6 +104,7 @@ export default function DespesasPage() {
   const [expenseToRefund, setExpenseToRefund] = useState<Expense | null>(null);
   const [paymentForm, setPaymentForm] = useState(initialPaymentForm);
   const [refundForm, setRefundForm] = useState(initialRefundForm);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
 
   const toast = useToast();
   const canView = useHasAnyFinancialBoat();
@@ -146,8 +165,47 @@ export default function DespesasPage() {
       individualMode: expense.individualMode ?? 'rateado',
       installmentStrategy: expense.installmentStrategy ?? 'single',
       installmentCount: String(expense.installmentCount || 1),
+      attachmentUrl: expense.attachmentUrl ?? '',
+      attachmentName: expense.attachmentName ?? '',
+      attachmentSize: expense.attachmentSize ?? 0,
+      attachmentMimeType: expense.attachmentMimeType ?? '',
     });
     setIsFormOpen(true);
+  }
+
+  async function handleAttachmentChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error('Arquivo excede 10 MB.');
+      return;
+    }
+    setAttachmentUploading(true);
+    try {
+      const { url } = await uploadFile('expenses', file);
+      setExpenseForm((current) => ({
+        ...current,
+        attachmentUrl: url,
+        attachmentName: file.name,
+        attachmentSize: file.size,
+        attachmentMimeType: file.type,
+      }));
+    } catch (uploadError) {
+      toast.error(getErrorMessage(uploadError, 'Erro ao enviar o anexo.'));
+    } finally {
+      setAttachmentUploading(false);
+    }
+  }
+
+  function clearAttachment() {
+    setExpenseForm((current) => ({
+      ...current,
+      attachmentUrl: '',
+      attachmentName: '',
+      attachmentSize: 0,
+      attachmentMimeType: '',
+    }));
   }
 
   function openPayModal(expense: Expense) {
@@ -181,6 +239,10 @@ export default function DespesasPage() {
       individualMode: expenseForm.individualMode,
       installmentStrategy: expenseForm.installmentStrategy,
       installmentCount: expenseForm.installmentStrategy === 'single' ? 1 : Math.max(1, Number(expenseForm.installmentCount) || 1),
+      attachmentUrl: expenseForm.attachmentUrl || undefined,
+      attachmentName: expenseForm.attachmentName || undefined,
+      attachmentSize: expenseForm.attachmentSize || undefined,
+      attachmentMimeType: expenseForm.attachmentMimeType || undefined,
     };
 
     try {
@@ -356,6 +418,17 @@ export default function DespesasPage() {
                           {expense.refundStatus !== 'none' && (
                             <span className="text-xs font-medium text-amber-600">{getRefundStatusLabel(expense.refundStatus)}</span>
                           )}
+                          {expense.attachmentUrl && (
+                            <a
+                              href={expense.attachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex w-fit items-center gap-1 text-xs text-nautify-700 hover:underline dark:text-nautify-300"
+                            >
+                              <Paperclip className="h-3 w-3" />
+                              <span className="max-w-[180px] truncate">{expense.attachmentName || 'Ver anexo'}</span>
+                            </a>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">{expense.boatName ?? '—'}</td>
@@ -452,9 +525,58 @@ export default function DespesasPage() {
               onChange={(event) => setExpenseForm((current) => ({ ...current, installmentCount: event.target.value }))}
             />
           )}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Anexo (nota fiscal)</label>
+            {expenseForm.attachmentUrl ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
+                <a
+                  href={expenseForm.attachmentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-w-0 items-center gap-2 text-sm text-nautify-700 hover:underline dark:text-nautify-300"
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{expenseForm.attachmentName || 'Anexo'}</span>
+                  {expenseForm.attachmentSize > 0 && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      ({formatFileSize(expenseForm.attachmentSize)})
+                    </span>
+                  )}
+                </a>
+                <Button type="button" variant="ghost" size="sm" onClick={clearAttachment}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <label
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-nautify-400 hover:text-foreground ${
+                  attachmentUploading ? 'pointer-events-none opacity-60' : ''
+                }`}
+              >
+                {attachmentUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="h-4 w-4" />
+                    Anexar comprovante (PDF ou imagem, até 10 MB)
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept={ACCEPTED_ATTACHMENT_TYPES}
+                  className="hidden"
+                  onChange={handleAttachmentChange}
+                  disabled={attachmentUploading}
+                />
+              </label>
+            )}
+          </div>
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={resetExpenseForm}>Cancelar</Button>
-            <Button type="submit" className="flex-1">{editingExpense ? 'Salvar alterações' : 'Criar despesa'}</Button>
+            <Button type="submit" className="flex-1" disabled={attachmentUploading}>{editingExpense ? 'Salvar alterações' : 'Criar despesa'}</Button>
           </div>
         </form>
       </Modal>

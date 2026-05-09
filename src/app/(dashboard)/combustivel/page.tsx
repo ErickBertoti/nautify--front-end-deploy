@@ -9,6 +9,9 @@ import {
   DollarSign,
   Ship,
   Loader2,
+  Paperclip,
+  X,
+  FileText,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -21,7 +24,29 @@ import { useApi } from '@/hooks/useApi';
 import { useBoats, useBoatMembers } from '@/hooks/useEntityOptions';
 import { useHasAnyBoat } from '@/hooks/useBoatPermissions';
 import { fuelingService } from '@/services';
+import { uploadFile } from '@/lib/storage';
+import { useToast } from '@/components/ui/Toast';
+import { getErrorMessage } from '@/lib/errors';
 import type { FuelBreakdownItem, FuelConsumptionSummary, Fueling } from '@/types';
+
+const ACCEPTED_ATTACHMENT_TYPES = '.pdf,image/png,image/jpeg,image/webp';
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+
+function formatFileSize(bytes: number) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+type AttachmentDraft = {
+  url: string;
+  name: string;
+  size: number;
+  mimeType: string;
+};
+
+const emptyAttachment: AttachmentDraft = { url: '', name: '', size: 0, mimeType: '' };
 
 type FuelFormState = {
   gasolinaLiters: string;
@@ -58,6 +83,9 @@ export default function CombustivelPage() {
   const [formBoatId, setFormBoatId] = useState('');
   const [formAssociation, setFormAssociation] = useState<'socio' | 'teste'>('socio');
   const [fuelForm, setFuelForm] = useState<FuelFormState>(emptyFuelForm);
+  const [attachment, setAttachment] = useState<AttachmentDraft>(emptyAttachment);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const toast = useToast();
   const canWrite = useHasAnyBoat();
   const { boats } = useBoats();
   const { socios: formSocios } = useBoatMembers(formBoatId);
@@ -156,11 +184,33 @@ export default function CombustivelPage() {
     setFormBoatId('');
     setFormAssociation('socio');
     setFuelForm(emptyFuelForm);
+    setAttachment(emptyAttachment);
   };
 
   const handleFuelFieldChange = (field: keyof FuelFormState, value: string) => {
     setFuelForm((current) => ({ ...current, [field]: value }));
   };
+
+  const handleAttachmentChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error('Arquivo excede 10 MB.');
+      return;
+    }
+    setAttachmentUploading(true);
+    try {
+      const { url } = await uploadFile('fuelings', file);
+      setAttachment({ url, name: file.name, size: file.size, mimeType: file.type });
+    } catch (uploadError) {
+      toast.error(getErrorMessage(uploadError, 'Erro ao enviar o anexo.'));
+    } finally {
+      setAttachmentUploading(false);
+    }
+  };
+
+  const clearAttachment = () => setAttachment(emptyAttachment);
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -188,6 +238,10 @@ export default function CombustivelPage() {
       associationType,
       associatedUserId: associationType === 'socio' ? associatedUserId : undefined,
       observations: (formData.get('observations') as string) || undefined,
+      attachmentUrl: attachment.url || undefined,
+      attachmentName: attachment.name || undefined,
+      attachmentSize: attachment.size || undefined,
+      attachmentMimeType: attachment.mimeType || undefined,
     });
 
     resetModalState();
@@ -361,7 +415,22 @@ export default function CombustivelPage() {
                           {fueling.associationType === 'teste' ? 'Teste' : 'Sócio'}
                         </Badge>
                       </td>
-                      <td className="px-6 py-3.5 text-sm text-muted-foreground">{fueling.associatedUser?.name || '-'}</td>
+                      <td className="px-6 py-3.5 text-sm text-muted-foreground">
+                        <div className="flex flex-col gap-1">
+                          <span>{fueling.associatedUser?.name || '-'}</span>
+                          {fueling.attachmentUrl && (
+                            <a
+                              href={fueling.attachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex w-fit items-center gap-1 text-xs text-nautify-700 hover:underline dark:text-nautify-300"
+                            >
+                              <Paperclip className="h-3 w-3" />
+                              <span className="max-w-[140px] truncate">{fueling.attachmentName || 'Ver nota'}</span>
+                            </a>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -479,11 +548,61 @@ export default function CombustivelPage() {
 
           <Input label="Observações" name="observations" placeholder="Opcional" />
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Anexo (nota do combustível)</label>
+            {attachment.url ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
+                <a
+                  href={attachment.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-w-0 items-center gap-2 text-sm text-nautify-700 hover:underline dark:text-nautify-300"
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{attachment.name || 'Anexo'}</span>
+                  {attachment.size > 0 && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      ({formatFileSize(attachment.size)})
+                    </span>
+                  )}
+                </a>
+                <Button type="button" variant="ghost" size="sm" onClick={clearAttachment}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <label
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-nautify-400 hover:text-foreground ${
+                  attachmentUploading ? 'pointer-events-none opacity-60' : ''
+                }`}
+              >
+                {attachmentUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="h-4 w-4" />
+                    Anexar nota (PDF ou imagem, até 10 MB)
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept={ACCEPTED_ATTACHMENT_TYPES}
+                  className="hidden"
+                  onChange={handleAttachmentChange}
+                  disabled={attachmentUploading}
+                />
+              </label>
+            )}
+          </div>
+
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={resetModalState}>
               Cancelar
             </Button>
-            <Button type="submit" className="flex-1">
+            <Button type="submit" className="flex-1" disabled={attachmentUploading}>
               Registrar
             </Button>
           </div>
