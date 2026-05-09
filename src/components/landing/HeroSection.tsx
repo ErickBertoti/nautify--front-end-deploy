@@ -55,18 +55,27 @@ export function HeroSection() {
           transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
         >
           <a
-            href="#features"
+            href="/register"
             className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white transition-all duration-200 bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg hover:from-blue-500 hover:to-blue-400 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
           >
-            Conhecer Funcionalidades
+            Começar grátis · 10 dias
           </a>
           <a
-            href="/login"
+            href="#features"
             className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-slate-300 transition-all duration-200 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:text-white hover:border-white/20 backdrop-blur-sm"
           >
-            Fazer Login
+            Conhecer funcionalidades
           </a>
         </motion.div>
+
+        <motion.p
+          className="mt-6 text-sm text-slate-500"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, delay: 0.45 }}
+        >
+          Sem cartão de crédito · Cancele quando quiser
+        </motion.p>
 
         {/* Stats bar */}
         <motion.div

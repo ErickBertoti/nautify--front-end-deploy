@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 export function Footer() {
   return (
@@ -22,13 +23,13 @@ export function Footer() {
           </div>
 
           <div className="flex gap-8 text-sm text-slate-400">
-            <a href="#" className="hover:text-white transition-colors">
+            <Link href="/termos/uso" className="hover:text-white transition-colors">
               Termos de Uso
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
+            </Link>
+            <Link href="/termos/privacidade" className="hover:text-white transition-colors">
               Privacidade
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
+            </Link>
+            <a href="mailto:contato@nautifyapp.com.br" className="hover:text-white transition-colors">
               Contato
             </a>
           </div>
