@@ -109,6 +109,10 @@ export interface Expense {
   refundAmount?: number;
   refundReason?: string;
   refundedAt?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentSize?: number;
+  attachmentMimeType?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -224,6 +228,10 @@ export interface Fueling {
   associatedUser?: User;
   associatedTripId?: string;
   observations?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentSize?: number;
+  attachmentMimeType?: string;
   createdAt: string;
 }
 
