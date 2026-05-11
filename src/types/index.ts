@@ -301,10 +301,26 @@ export interface MaintenanceCompletePayload {
 
 export interface MaintenancePart {
   id: string;
+  maintenanceId?: string;
   name: string;
   quantity: number;
   unitCost: number;
   totalCost: number;
+  replacedAt?: string | null;
+  supplierId?: string | null;
+  supplierName?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MaintenancePartPayload {
+  name: string;
+  quantity: number;
+  unitCost: number;
+  replacedAt?: string | null;
+  supplierId?: string | null;
+  notes?: string;
 }
 
 export interface MaintenancePartHistory {
@@ -651,6 +667,124 @@ export interface AdminPlanUpdateResult {
     error: string;
   }>;
   propagateToExisting: boolean;
+}
+
+// --- Beneficiários / Prestadores ---
+export type BeneficiaryType =
+  | 'marinheiro'
+  | 'mecanico'
+  | 'fornecedor'
+  | 'prestador_servico'
+  | 'proprietario'
+  | 'socio'
+  | 'parceiro_agencia'
+  | 'outro';
+
+export interface Beneficiary {
+  id: string;
+  boatId?: string | null;
+  boatName?: string;
+  name: string;
+  type: BeneficiaryType;
+  document?: string;
+  phone?: string;
+  email?: string;
+  pixKey?: string;
+  notes?: string;
+  active: boolean;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BeneficiaryPayload {
+  boatId?: string | null;
+  name: string;
+  type: BeneficiaryType;
+  document?: string;
+  phone?: string;
+  email?: string;
+  pixKey?: string;
+  notes?: string;
+  active?: boolean;
+}
+
+// --- Turnover / Giro ---
+export type TurnoverDirection = 'received_by_beneficiary' | 'paid_to_beneficiary';
+export type TurnoverSourceType =
+  | 'revenue' | 'expense' | 'trip' | 'maintenance' | 'fueling' | 'manual';
+
+export interface TurnoverPayment {
+  id: string;
+  createdBy: string;
+  beneficiaryId: string;
+  beneficiaryName?: string;
+  boatId?: string | null;
+  boatName?: string;
+  direction: TurnoverDirection;
+  sourceType: TurnoverSourceType;
+  sourceId?: string | null;
+  amount: number;
+  date: string;
+  paymentMethod?: string;
+  enteredCompanyCash: boolean;
+  description?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TurnoverPaymentPayload {
+  beneficiaryId: string;
+  boatId?: string | null;
+  direction: TurnoverDirection;
+  sourceType?: TurnoverSourceType;
+  sourceId?: string | null;
+  amount: number;
+  date: string;
+  paymentMethod?: string;
+  enteredCompanyCash: boolean;
+  description?: string;
+  notes?: string;
+}
+
+export interface TurnoverSummary {
+  receivedByBeneficiary: number;
+  paidToBeneficiary: number;
+  enteredCompanyCash: number;
+  offCompanyCash: number;
+  netExposure: number;
+  totalCount: number;
+}
+
+// --- Attachments (polimórficos) ---
+export type AttachmentEntityType =
+  | 'expense' | 'revenue' | 'fueling' | 'maintenance' | 'turnover_payment';
+
+export type AllowedAttachmentMime =
+  | 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp';
+
+export interface Attachment {
+  id: string;
+  uploadedBy: string;
+  entityType: AttachmentEntityType;
+  entityId: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: AllowedAttachmentMime;
+  storagePath?: string;
+  createdAt: string;
+}
+
+export interface AttachmentMetadataPayload {
+  entityType: AttachmentEntityType;
+  entityId: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: AllowedAttachmentMime;
+  storagePath?: string;
 }
 
 // --- API ---

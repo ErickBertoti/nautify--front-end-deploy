@@ -15,6 +15,8 @@ import { StatCard } from '@/components/shared/StatCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MaintenanceCard } from '@/components/maintenance/MaintenanceCard';
 import { MaintenanceEditModal, MaintenanceCompleteModal } from '@/components/maintenance/MaintenanceModals';
+import { MaintenancePartsModal } from '@/components/maintenance/MaintenancePartsModal';
+import { AttachmentUploader } from '@/components/shared/AttachmentUploader';
 import { formatCurrency } from '@/lib/utils';
 import { useApi } from '@/hooks/useApi';
 import { useBoats } from '@/hooks/useEntityOptions';
@@ -26,6 +28,8 @@ export default function ManutencaoPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Maintenance | null>(null);
   const [completing, setCompleting] = useState<Maintenance | null>(null);
+  const [managingParts, setManagingParts] = useState<Maintenance | null>(null);
+  const [managingAttachments, setManagingAttachments] = useState<Maintenance | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -198,6 +202,8 @@ export default function ManutencaoPage() {
                   onComplete={() => setCompleting(m)}
                   onEdit={() => setEditing(m)}
                   onCancel={() => handleCancel(m)}
+                  onManageParts={() => setManagingParts(m)}
+                  onManageAttachments={() => setManagingAttachments(m)}
                 />
               ))}
             </div>
@@ -307,6 +313,25 @@ export default function ManutencaoPage() {
           onClose={() => setCompleting(null)}
           onCompleted={refetch}
         />
+      )}
+
+      {managingParts && (
+        <MaintenancePartsModal
+          maintenanceId={managingParts.id}
+          maintenanceTitle={managingParts.title}
+          isOpen
+          onClose={() => { setManagingParts(null); refetch(); }}
+        />
+      )}
+
+      {managingAttachments && (
+        <Modal isOpen onClose={() => setManagingAttachments(null)} title={`Anexos — ${managingAttachments.title}`}>
+          <AttachmentUploader
+            entityType="maintenance"
+            entityId={managingAttachments.id}
+            storageFolder={`maintenances/${managingAttachments.id}`}
+          />
+        </Modal>
       )}
     </div>
   );
