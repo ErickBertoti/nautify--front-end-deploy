@@ -288,8 +288,15 @@ export interface Maintenance {
   responsibleUser?: User;
   parts: MaintenancePart[];
   notes?: string;
+  completionNotes?: string;
   createdBy: string;
   createdAt: string;
+}
+
+export interface MaintenanceCompletePayload {
+  actualCost: number;
+  completedDate: string;
+  completionNotes?: string;
 }
 
 export interface MaintenancePart {
@@ -336,6 +343,27 @@ export interface CalendarEvent {
   relatedMaintenanceId?: string;
   relatedTripId?: string;
   createdAt: string;
+}
+
+// Evento unificado da agenda: agrega manutenções, saídas e eventos manuais
+// em um único shape, alimentado pelo endpoint /api/calendar.
+export type CalendarEventKind = 'maintenance' | 'trip' | 'event';
+
+export interface UnifiedCalendarEvent {
+  id: string;
+  kind: CalendarEventKind;
+  refId: string;
+  title: string;
+  subtitle?: string;
+  start: string;
+  end?: string | null;
+  allDay: boolean;
+  boatId: string;
+  boatName?: string;
+  status?: string;
+  color?: string;
+  subtype?: string;
+  meta?: Record<string, unknown>;
 }
 
 // --- Sócios ---
