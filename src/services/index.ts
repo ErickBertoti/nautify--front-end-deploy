@@ -15,8 +15,10 @@ import type {
   FuelConsumptionSummary,
   Incident,
   Maintenance,
+  MaintenanceCompletePayload,
   MaintenancePartHistory,
   CalendarEvent,
+  UnifiedCalendarEvent,
   Partner,
   PartnerContribution,
   Document,
@@ -320,7 +322,7 @@ export const maintenanceService = {
 
   cancel: (id: string) => api.patch<ApiResponse<Maintenance>>(`/maintenances/${id}/cancel`, {}),
 
-  complete: (id: string, data: { actualCost?: number; notes?: string }) =>
+  complete: (id: string, data: MaintenanceCompletePayload) =>
     api.patch<ApiResponse<Maintenance>>(`/maintenances/${id}/complete`, data),
 
   listParts: (params?: { boatId?: string; page?: number; limit?: number }) => {
@@ -358,6 +360,17 @@ export const calendarService = {
 
   bulkCreate: (events: Partial<CalendarEvent>[]) =>
     api.post<ApiResponse<{ created: number }>>('/events/bulk', { events }),
+
+  // Agenda unificada: agrega manutenções, saídas e eventos manuais em uma única
+  // chamada. Front não precisa mais mesclar entidades client-side.
+  getUnified: (params?: { from?: string; to?: string; boatId?: string; kind?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.kind) query.set('kind', params.kind);
+    return api.get<ApiResponse<UnifiedCalendarEvent[]>>(`/calendar?${query.toString()}`);
+  },
 };
 
 // ============================================
