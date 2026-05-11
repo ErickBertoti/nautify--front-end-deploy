@@ -60,6 +60,7 @@ const navGroups: NavGroup[] = [
       { label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa', icon: ArrowDownUp, financialOnly: true },
       { label: 'Histórico', href: '/financeiro/historico', icon: History, financialOnly: true },
       { label: 'Giro', href: '/financeiro/giro', icon: Banknote, financialOnly: true },
+      { label: 'Pagar no Giro', href: '/financeiro/pagar-no-giro', icon: Banknote, financialOnly: true },
       { label: 'Assinaturas', href: '/assinaturas', icon: CreditCard },
     ],
   },

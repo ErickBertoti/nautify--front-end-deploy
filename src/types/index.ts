@@ -757,6 +757,51 @@ export interface TurnoverSummary {
   totalCount: number;
 }
 
+// --- Pagar no Giro (beneficiary_payments) ---
+// Saídas de caixa para beneficiários. Schema distinto de turnover_payments:
+// unidirecional, usa `origin` em vez de direction/source_type.
+export type BeneficiaryPaymentOrigin = 'manual' | 'trip' | 'maintenance';
+
+export interface BeneficiaryPayment {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  beneficiaryId: string;
+  beneficiaryName?: string;
+  amount: number;
+  paidAt: string;
+  enteredCompanyCash: boolean;
+  origin: BeneficiaryPaymentOrigin;
+  paymentMethod?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface BeneficiaryPaymentPayload {
+  boatId: string;
+  beneficiaryId: string;
+  amount: number;
+  paidAt: string;
+  enteredCompanyCash: boolean;
+  origin: BeneficiaryPaymentOrigin;
+  paymentMethod?: string;
+  notes?: string;
+}
+
+export interface BeneficiaryPaymentSummary {
+  total: number;
+  enteredCompanyCash: number;
+  offCompanyCash: number;
+  count: number;
+  perBeneficiary: Array<{
+    beneficiaryId: string;
+    beneficiaryName: string;
+    total: number;
+    count: number;
+  }>;
+}
+
 // --- Attachments (polimórficos) ---
 export type AttachmentEntityType =
   | 'expense' | 'revenue' | 'fueling' | 'maintenance' | 'turnover_payment';

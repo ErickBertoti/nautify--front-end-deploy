@@ -23,6 +23,9 @@ import type {
   UnifiedCalendarEvent,
   Beneficiary,
   BeneficiaryPayload,
+  BeneficiaryPayment,
+  BeneficiaryPaymentPayload,
+  BeneficiaryPaymentSummary,
   TurnoverPayment,
   TurnoverPaymentPayload,
   TurnoverSummary,
@@ -632,6 +635,51 @@ export const turnoverService = {
     api.put<ApiResponse<TurnoverPayment>>(`/turnover-payments/${id}`, data),
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/turnover-payments/${id}`),
+};
+
+// ============================================
+// Pagar no Giro (beneficiary_payments — saídas dedicadas)
+// ============================================
+export const beneficiaryPaymentService = {
+  list: (params?: {
+    beneficiaryId?: string;
+    boatId?: string;
+    origin?: string;
+    enteredCompanyCash?: boolean;
+    from?: string;
+    to?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.beneficiaryId) query.set('beneficiary_id', params.beneficiaryId);
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.origin) query.set('origin', params.origin);
+    if (typeof params?.enteredCompanyCash === 'boolean')
+      query.set('entered_company_cash', String(params.enteredCompanyCash));
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api.get<PaginatedResponse<BeneficiaryPayment>>(`/beneficiary-payments?${query.toString()}`);
+  },
+
+  summary: (params?: { beneficiaryId?: string; boatId?: string; from?: string; to?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.beneficiaryId) query.set('beneficiary_id', params.beneficiaryId);
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    return api.get<ApiResponse<BeneficiaryPaymentSummary>>(`/beneficiary-payments/summary?${query.toString()}`);
+  },
+
+  create: (data: BeneficiaryPaymentPayload) =>
+    api.post<ApiResponse<BeneficiaryPayment>>('/beneficiary-payments', data),
+
+  update: (id: string, data: BeneficiaryPaymentPayload) =>
+    api.put<ApiResponse<BeneficiaryPayment>>(`/beneficiary-payments/${id}`, data),
+
+  delete: (id: string) => api.delete<ApiResponse<void>>(`/beneficiary-payments/${id}`),
 };
 
 // ============================================
