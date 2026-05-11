@@ -5,6 +5,26 @@
 
 // --- Perfis de Usuário ---
 export type UserRole = 'admin' | 'socio' | 'marinheiro';
+export type DocumentType = 'cpf' | 'cnpj';
+export type InstallmentStrategy = 'single' | 'generated' | 'metadata_only';
+export type PaymentMethod = 'pix' | 'transferencia' | 'cartao_credito' | 'cartao_debito' | 'boleto' | 'dinheiro' | 'outro';
+export type RefundStatus = 'none' | 'partial' | 'full';
+
+export interface UserAddress {
+  cep: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
+export interface UserMembership {
+  boatId: string;
+  boatName: string;
+  role: UserRole;
+}
 
 export interface User {
   id: string;
@@ -12,7 +32,16 @@ export interface User {
   email: string;
   phone?: string;
   avatarUrl?: string;
+  documentType?: DocumentType;
+  document?: string;
+  birthDate?: string;
+  address?: UserAddress;
+  memberships?: UserMembership[];
+  accountStatus: 'active' | 'suspended';
+  authVersion: number;
+  isPlatformAdmin: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface BoatMembership {
@@ -34,8 +63,10 @@ export interface Boat {
   imageUrl?: string;
   marinaName?: string;
   marinaLocation?: string;
+  isRental?: boolean;
   createdAt: string;
   members: BoatMember[];
+  subscription?: Subscription;
 }
 
 export interface BoatMember {
@@ -63,8 +94,25 @@ export interface Expense {
   responsibleUser?: User;
   splitAmount?: number;
   splitCount?: number;
+  installmentStrategy: InstallmentStrategy;
+  installmentGroupId?: string;
+  installmentIndex: number;
+  installmentCount: number;
   dueDate?: string;
   status: ExpenseStatus;
+  paidByUserId?: string;
+  paidByUser?: User;
+  paidAt?: string;
+  paymentMethod?: PaymentMethod;
+  paymentNotes?: string;
+  refundStatus: RefundStatus;
+  refundAmount?: number;
+  refundReason?: string;
+  refundedAt?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentSize?: number;
+  attachmentMimeType?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -84,6 +132,12 @@ export interface Revenue {
   payerUser?: User;
   dueDate?: string;
   receivedDate?: string;
+  paymentMethod?: PaymentMethod;
+  paymentNotes?: string;
+  refundStatus: RefundStatus;
+  refundAmount?: number;
+  refundReason?: string;
+  refundedAt?: string;
   status: RevenueStatus;
   createdBy: string;
   createdAt: string;
@@ -102,6 +156,11 @@ export interface CashFlowEntry {
   date: string;
   relatedExpenseId?: string;
   relatedRevenueId?: string;
+  relatedContributionId?: string;
+  paymentMethod?: PaymentMethod;
+  paidByUserId?: string;
+  paidByUser?: User;
+  refundOfEntryId?: string;
   createdAt: string;
 }
 
@@ -118,7 +177,7 @@ export interface CashFlowSummary {
 }
 
 // --- Saídas ---
-export type TripStatus = 'em_andamento' | 'finalizada' | 'com_ocorrencia';
+export type TripStatus = 'agendada' | 'em_andamento' | 'finalizada' | 'com_ocorrencia' | 'cancelada';
 export type TripType = 'uso' | 'teste';
 
 export interface Trip {
@@ -128,17 +187,32 @@ export interface Trip {
   type: TripType;
   responsibleUserId?: string;
   responsibleUser?: User;
-  sailorId: string;
+  sailorId?: string;
   sailor?: User;
   startDate: string;
   endDate?: string;
   status: TripStatus;
   observations?: string;
+  occurrence?: string;
+  occurrenceDescription?: string;
   createdAt: string;
+}
+
+export interface TripOccurrenceResponse {
+  id: string;
+  status: TripStatus;
 }
 
 // --- Abastecimentos / Combustível ---
 export type FuelAssociation = 'socio' | 'teste';
+export type FuelType = 'gasolina' | 'diesel';
+
+export interface FuelBreakdownItem {
+  fuelType: FuelType;
+  liters: number;
+  totalValue: number;
+  pricePerLiter: number;
+}
 
 export interface Fueling {
   id: string;
@@ -148,11 +222,16 @@ export interface Fueling {
   liters: number;
   totalValue: number;
   pricePerLiter?: number;
+  fuelBreakdown?: FuelBreakdownItem[];
   associationType: FuelAssociation;
   associatedUserId?: string;
   associatedUser?: User;
   associatedTripId?: string;
   observations?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentSize?: number;
+  attachmentMimeType?: string;
   createdAt: string;
 }
 
@@ -209,8 +288,15 @@ export interface Maintenance {
   responsibleUser?: User;
   parts: MaintenancePart[];
   notes?: string;
+  completionNotes?: string;
   createdBy: string;
   createdAt: string;
+}
+
+export interface MaintenanceCompletePayload {
+  actualCost: number;
+  completedDate: string;
+  completionNotes?: string;
 }
 
 export interface MaintenancePart {
@@ -219,6 +305,19 @@ export interface MaintenancePart {
   quantity: number;
   unitCost: number;
   totalCost: number;
+}
+
+export interface MaintenancePartHistory {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  maintenanceId: string;
+  maintenanceTitle: string;
+  scheduledDate: string;
+  boatId: string;
+  boatName: string;
 }
 
 // --- Agenda ---
@@ -244,6 +343,27 @@ export interface CalendarEvent {
   relatedMaintenanceId?: string;
   relatedTripId?: string;
   createdAt: string;
+}
+
+// Evento unificado da agenda: agrega manutenções, saídas e eventos manuais
+// em um único shape, alimentado pelo endpoint /api/calendar.
+export type CalendarEventKind = 'maintenance' | 'trip' | 'event';
+
+export interface UnifiedCalendarEvent {
+  id: string;
+  kind: CalendarEventKind;
+  refId: string;
+  title: string;
+  subtitle?: string;
+  start: string;
+  end?: string | null;
+  allDay: boolean;
+  boatId: string;
+  boatName?: string;
+  status?: string;
+  color?: string;
+  subtype?: string;
+  meta?: Record<string, unknown>;
 }
 
 // --- Sócios ---
@@ -272,6 +392,14 @@ export interface PartnerContribution {
   amount: number;
   month: string;
   paidAt?: string;
+  paidByUserId?: string;
+  paidByUser?: User;
+  paymentMethod?: PaymentMethod;
+  paymentNotes?: string;
+  refundStatus: RefundStatus;
+  refundAmount?: number;
+  refundReason?: string;
+  refundedAt?: string;
   status: 'pendente' | 'pago' | 'atrasado';
   createdAt: string;
 }
@@ -299,8 +427,47 @@ export interface Document {
 }
 
 // --- Notificações ---
-export type NotificationType = 'manutencao' | 'financeiro' | 'documento' | 'sistema' | 'agenda';
+export type NotificationType = 'manutencao' | 'financeiro' | 'documento' | 'sistema' | 'agenda' | 'embarcacao';
 export type NotificationPriority = 'baixa' | 'media' | 'alta';
+
+export type BoatInvitationStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface BoatInvitation {
+  id: string;
+  boatId: string;
+  invitedEmail: string;
+  role: UserRole;
+  status: BoatInvitationStatus;
+  createdAt: string;
+  respondedAt?: string;
+  boatName?: string;
+  inviterName?: string;
+}
+
+export interface NotificationInvitation {
+  id: string;
+  boatId: string;
+  boatName: string;
+  invitedEmail: string;
+  role: UserRole;
+  status: BoatInvitationStatus;
+  inviterName: string;
+}
+
+export interface SettlementRequest {
+  paidByUserId?: string;
+  payerUserId?: string;
+  paymentMethod?: PaymentMethod;
+  notes?: string;
+  paidAt?: string;
+  receivedAt?: string;
+}
+
+export interface RefundRequest {
+  refundAmount?: number;
+  reason?: string;
+  refundedAt?: string;
+}
 
 export interface Notification {
   id: string;
@@ -315,6 +482,7 @@ export interface Notification {
   relatedEntityId?: string;
   relatedEntityType?: string;
   createdAt: string;
+  invitation?: NotificationInvitation;
 }
 
 // --- Relatórios ---
@@ -344,13 +512,18 @@ export interface DashboardStats {
   totalBoats: number;
   totalExpensesMonth: number;
   totalRevenueMonth: number;
+  totalFuelCostMonth: number;
+  totalFuelLitersMonth: number;
   totalTripsMonth: number;
   pendingIncidents: number;
   pendingMaintenances: number;
   expiringDocuments: number;
   unreadNotifications: number;
   cashFlowBalance: number;
+  revenueChangePercent: number;
+  expensesChangePercent: number;
   upcomingExpenses: Expense[];
+  recentFuelings: Fueling[];
   recentTrips: Trip[];
   recentIncidents: Incident[];
   upcomingEvents: CalendarEvent[];
@@ -365,6 +538,119 @@ export interface DashboardStats {
     revenue: number;
     expense: number;
   }[];
+}
+
+// --- Billing ---
+export type SubscriptionStatus = 'trialing' | 'pending' | 'active' | 'overdue' | 'canceled';
+
+export interface Plan {
+  id: string;
+  code: string;
+  name: string;
+  price: number;
+  billingCycle: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  boatId: string;
+  boatName?: string;
+  ownerUserId: string;
+  asaasCustomerId?: string;
+  asaasSubscriptionId?: string;
+  planId: string;
+  plan?: Plan;
+  status: SubscriptionStatus;
+  billingType: string;
+  value: number;
+  nextDueDate?: string;
+  trialEndsAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BillingPromotionMode = 'fixed_price' | 'amount_off' | 'percent_off';
+export type SyncStatus = 'not_required' | 'pending' | 'synced' | 'failed';
+
+export interface BillingPromotion {
+  id: string;
+  code: string;
+  name: string;
+  mode: BillingPromotionMode;
+  value: number;
+  startsAt?: string;
+  endsAt?: string;
+  active: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionPriceChange {
+  id: string;
+  subscriptionId: string;
+  promotionId?: string;
+  source: 'manual_override' | 'promotion' | 'plan_propagation';
+  oldValue: number;
+  newValue: number;
+  reason: string;
+  effectiveFrom: string;
+  effectiveUntil?: string;
+  syncStatus: SyncStatus;
+  syncedAt?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  adminUserId: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  targetUserId?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AdminOverview {
+  totalUsers: number;
+  activeUsers: number;
+  suspendedUsers: number;
+  platformAdmins: number;
+  totalBoats: number;
+  trialSubscriptions: number;
+  overdueSubscriptions: number;
+  activeSubscriptions: number;
+  mrr: number;
+  activePromotions: number;
+  recentAuditLogs: AdminAuditLog[];
+}
+
+export interface AdminAccountSummary {
+  user: User;
+  boatsOwned: number;
+  boatsAsMember: number;
+  latestSubscription?: Subscription;
+}
+
+export interface AdminSubscriptionSummary extends Subscription {
+  ownerName: string;
+  ownerEmail: string;
+  latestPriceChange?: SubscriptionPriceChange;
+}
+
+export interface AdminPlanUpdateResult {
+  plan: Plan;
+  propagated: number;
+  failed: number;
+  failures: Array<{
+    subscriptionId: string;
+    error: string;
+  }>;
+  propagateToExisting: boolean;
 }
 
 // --- API ---

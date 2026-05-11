@@ -1,86 +1,139 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ArrowDownUp,
   TrendingUp,
   TrendingDown,
-  ArrowUpRight,
-  ArrowDownRight,
   DollarSign,
-  Calendar,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { useHasAnyFinancialBoat } from '@/hooks/useBoatPermissions';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { Wallet } from 'lucide-react';
+import { cashFlowService } from '@/services';
+import { getCashFlowSourceLabel, getPaymentMethodLabel } from '@/lib/financial';
+import type { CashFlowSummary, CashFlowEntry } from '@/types';
 
-const mockSummary = {
-  totalEntradas: 17900,
-  totalSaidas: 12880,
-  saldo: 5020,
-};
+function getPeriodDates(period: string): { startDate: string; endDate: string } {
+  const [year, month] = [Number(period.slice(0, 4)), Number(period.slice(5, 7)) - 1];
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+  };
+}
 
-const mockMonthlyData = [
-  { month: 'Set/2025', entradas: 9800, saidas: 8200, saldo: 1600 },
-  { month: 'Out/2025', entradas: 10200, saidas: 7800, saldo: 2400 },
-  { month: 'Nov/2025', entradas: 11500, saidas: 9200, saldo: 2300 },
-  { month: 'Dez/2025', entradas: 13000, saidas: 10500, saldo: 2500 },
-  { month: 'Jan/2026', entradas: 11800, saidas: 8900, saldo: 2900 },
-  { month: 'Fev/2026', entradas: 12600, saidas: 8450, saldo: 4150 },
-  { month: 'Mar/2026', entradas: 17900, saidas: 12880, saldo: 5020 },
-];
+function getLastSixMonths() {
+  const now = new Date();
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+    return {
+      value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+    };
+  });
+}
 
-const mockEntries = [
-  { id: '1', type: 'entrada', description: 'Mensalidade Gabriel - Mar/2026', amount: 4200, date: '2026-03-01', boatName: 'Mar Azul' },
-  { id: '2', type: 'saida', description: 'Marina Mensalidade', amount: 3200, date: '2026-03-02', boatName: 'Mar Azul' },
-  { id: '3', type: 'entrada', description: 'Aluguel evento corporativo', amount: 3500, date: '2026-03-03', boatName: 'Veleiro Sol' },
-  { id: '4', type: 'saida', description: 'Manutenção Motor', amount: 1850, date: '2026-03-04', boatName: 'Mar Azul' },
-  { id: '5', type: 'entrada', description: 'Mensalidade Pedro - Mar/2026', amount: 4200, date: '2026-03-05', boatName: 'Mar Azul' },
-  { id: '6', type: 'saida', description: 'Seguro Anual', amount: 4500, date: '2026-03-05', boatName: 'Veleiro Sol' },
-  { id: '7', type: 'entrada', description: 'Mensalidade Lucas - Mar/2026', amount: 4200, date: '2026-03-05', boatName: 'Mar Azul' },
-  { id: '8', type: 'saida', description: 'Limpeza do casco', amount: 650, date: '2026-03-06', boatName: 'Mar Azul' },
-  { id: '9', type: 'entrada', description: 'Taxa evento corporativo', amount: 1800, date: '2026-03-07', boatName: 'Veleiro Sol' },
-  { id: '10', type: 'saida', description: 'Combustível', amount: 480, date: '2026-03-07', boatName: 'Mar Azul' },
-  { id: '11', type: 'saida', description: 'Troca de vela', amount: 2200, date: '2026-03-08', boatName: 'Veleiro Sol' },
-];
+function formatMonthLabel(month: string) {
+  const [year, monthNumber] = month.split('-');
+  if (!year || !monthNumber) {
+    return month;
+  }
+  return `${monthNumber}/${year}`;
+}
 
 export default function FluxoCaixaPage() {
-  const [period, setPeriod] = useState('mar2026');
-  const maxVal = Math.max(...mockMonthlyData.flatMap((m) => [m.entradas, m.saidas]));
+  const canView = useHasAnyFinancialBoat();
+  const now = new Date();
+  const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const [period, setPeriod] = useState(defaultPeriod);
 
-  const entriesWithBalance = mockEntries.reduce<(typeof mockEntries[number] & { runningBalance: number })[]>(
-    (acc, entry) => {
-      const prev = acc.length > 0 ? acc[acc.length - 1].runningBalance : 0;
-      const runningBalance = prev + (entry.type === 'entrada' ? entry.amount : -entry.amount);
-      acc.push({ ...entry, runningBalance });
-      return acc;
-    },
-    []
+  const { startDate, endDate } = getPeriodDates(period);
+  const monthOptions = getLastSixMonths();
+
+  const { data: summary, loading: loadingSummary, error: errorSummary, refetch: refetchSummary } = useApi<CashFlowSummary>(
+    () => canView
+      ? cashFlowService.getSummary({ startDate, endDate })
+      : Promise.resolve({ data: null as unknown as CashFlowSummary }),
+    [period, canView],
   );
+
+  const { data: entries, loading: loadingEntries, error: errorEntries, refetch: refetchEntries } = useApi<CashFlowEntry[]>(
+    () => canView
+      ? cashFlowService.listEntries({ startDate, endDate, limit: 200 })
+      : Promise.resolve({ data: [] as CashFlowEntry[] }),
+    [period, canView],
+  );
+
+  const loading = loadingSummary || loadingEntries;
+  const error = errorSummary || errorEntries;
+  const entryList = entries ?? [];
+  const monthlyData = summary?.entriesByMonth ?? [];
+  const maxVal = monthlyData.length > 0 ? Math.max(...monthlyData.flatMap((month) => [month.entradas, month.saidas])) : 1;
+
+  const totals = useMemo(() => ({
+    entradas: summary?.totalEntradas ?? 0,
+    saidas: summary?.totalSaidas ?? 0,
+    saldo: summary?.saldo ?? 0,
+  }), [summary]);
+
+  if (!canView) {
+    return (
+      <EmptyState
+        icon={Wallet}
+        title="Acesso restrito"
+        description="Apenas administradores e sócios podem visualizar o fluxo de caixa."
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-2">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={() => { refetchSummary(); refetchEntries(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Fluxo de Caixa</h1>
-          <p className="text-muted-foreground">Visão geral de entradas e saídas ao longo do tempo</p>
+          <p className="text-muted-foreground">Auditoria de entradas, saídas e reversões financeiras</p>
         </div>
-        <Select value={period} onChange={(e) => setPeriod(e.target.value)} className="w-auto">
-          <option value="mar2026">Março 2026</option>
-          <option value="fev2026">Fevereiro 2026</option>
-          <option value="jan2026">Janeiro 2026</option>
+        <Select value={period} onChange={(event) => setPeriod(event.target.value)} className="w-auto">
+          {monthOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
         </Select>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Total Entradas" value={formatCurrency(mockSummary.totalEntradas)} subtitle="receitas do mês" icon={TrendingUp} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Total Saídas" value={formatCurrency(mockSummary.totalSaidas)} subtitle="despesas do mês" icon={TrendingDown} iconBgColor="bg-red-50" iconColor="text-red-600" />
-        <StatCard title="Saldo" value={formatCurrency(mockSummary.saldo)} subtitle="resultado líquido" icon={DollarSign} iconBgColor="bg-nautify-50" iconColor="text-nautify-700" />
+        <StatCard title="Total Entradas" value={formatCurrency(totals.entradas)} subtitle="lançadas no período" icon={TrendingUp} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+        <StatCard title="Total Saídas" value={formatCurrency(totals.saidas)} subtitle="lançadas no período" icon={TrendingDown} iconBgColor="bg-red-50 dark:bg-red-500/15" iconColor="text-red-600 dark:text-red-300" />
+        <StatCard title="Saldo" value={formatCurrency(totals.saldo)} subtitle="resultado líquido" icon={DollarSign} iconBgColor="bg-nautify-50 dark:bg-nautify-500/15" iconColor="text-nautify-700 dark:text-nautify-300" />
       </div>
 
-      {/* Monthly Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -89,89 +142,71 @@ export default function FluxoCaixaPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-1 sm:gap-3 h-52">
-            {mockMonthlyData.map((month) => (
-              <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
-                <div className="flex gap-0.5 items-end w-full justify-center h-44">
+          <div className="flex items-end gap-2 h-52">
+            {monthlyData.map((month) => (
+              <div key={month.month} className="flex-1 flex flex-col items-center gap-2">
+                <div className="flex items-end gap-1 h-40 w-full justify-center">
                   <div
-                    className="w-2 sm:w-4 bg-emerald-400 rounded-t transition-all"
-                    style={{ height: `${(month.entradas / maxVal) * 100}%` }}
+                    className="w-4 rounded-t bg-emerald-400"
+                    style={{ height: `${maxVal === 0 ? 0 : (month.entradas / maxVal) * 100}%` }}
                     title={`Entradas: ${formatCurrency(month.entradas)}`}
                   />
                   <div
-                    className="w-2 sm:w-4 bg-red-400 rounded-t transition-all"
-                    style={{ height: `${(month.saidas / maxVal) * 100}%` }}
+                    className="w-4 rounded-t bg-red-400"
+                    style={{ height: `${maxVal === 0 ? 0 : (month.saidas / maxVal) * 100}%` }}
                     title={`Saídas: ${formatCurrency(month.saidas)}`}
                   />
                 </div>
-                <span className="text-[10px] text-muted-foreground text-center">{month.month.split('/')[0]}</span>
+                <span className="text-xs text-muted-foreground">{formatMonthLabel(month.month)}</span>
               </div>
             ))}
-          </div>
-          <div className="flex items-center justify-center gap-6 mt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-400" />
-              <span className="text-xs text-muted-foreground">Entradas</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="text-xs text-muted-foreground">Saídas</span>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Entries List */}
       <Card>
         <CardHeader>
-          <CardTitle>Movimentações do Mês</CardTitle>
+          <CardTitle>Movimentações do Período</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+            <table className="w-full min-w-[980px]">
               <thead>
                 <tr>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Data</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Descrição</th>
-                  <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Entrada</th>
-                  <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Saída</th>
-                  <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Saldo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Data</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Descrição</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Origem</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Pagador</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Método</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Barco</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Entrada</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Saída</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {entriesWithBalance.map((entry) => {
-                  return (
-                    <tr key={entry.id} className="hover:bg-muted/50 transition-colors">
-                      <td className="px-6 py-3.5 text-sm text-muted-foreground">{formatDate(entry.date)}</td>
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-2">
-                          {entry.type === 'entrada' ? (
-                            <ArrowUpRight className="h-4 w-4 text-emerald-500 shrink-0" />
-                          ) : (
-                            <ArrowDownRight className="h-4 w-4 text-red-500 shrink-0" />
-                          )}
-                          <span className="text-sm font-medium">{entry.description}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5 text-sm text-muted-foreground">{entry.boatName}</td>
-                      <td className="px-6 py-3.5 text-right">
-                        {entry.type === 'entrada' && (
-                          <span className="text-sm font-medium text-emerald-600">+{formatCurrency(entry.amount)}</span>
+                {entryList.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-muted/50 transition-colors">
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{formatDate(entry.date)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium">{entry.description}</span>
+                        {entry.refundOfEntryId && (
+                          <span className="text-xs font-medium text-amber-600">Reversão de lançamento</span>
                         )}
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        {entry.type === 'saida' && (
-                          <span className="text-sm font-medium text-red-600">-{formatCurrency(entry.amount)}</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        <span className={`text-sm font-semibold ${entry.runningBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {formatCurrency(entry.runningBalance)}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{getCashFlowSourceLabel(entry)}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{entry.paidByUser?.name ?? '—'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{getPaymentMethodLabel(entry.paymentMethod)}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{entry.boatName ?? '—'}</td>
+                    <td className="px-6 py-4 text-right text-sm font-medium text-emerald-600">
+                      {entry.type === 'entrada' ? formatCurrency(entry.amount) : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium text-red-600">
+                      {entry.type === 'saida' ? formatCurrency(entry.amount) : '—'}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

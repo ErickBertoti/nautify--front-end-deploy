@@ -21,6 +21,10 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { formatCurrency } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
+import { reportService } from '@/services';
+import type { ReportData } from '@/types';
 
 const reportTypes = [
   {
@@ -28,35 +32,35 @@ const reportTypes = [
     title: 'Relatório Financeiro',
     description: 'Resumo completo de receitas, despesas e fluxo de caixa por período.',
     icon: DollarSign,
-    color: 'bg-emerald-50 text-emerald-700',
+    color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
   },
   {
     id: 'despesas',
     title: 'Análise de Despesas',
     description: 'Detalhamento de despesas por categoria, embarcação e período.',
     icon: PieChart,
-    color: 'bg-red-50 text-red-700',
+    color: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
   },
   {
     id: 'combustivel',
     title: 'Consumo de Combustível',
     description: 'Análise de consumo, custos e eficiência por embarcação.',
     icon: Fuel,
-    color: 'bg-amber-50 text-amber-700',
+    color: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
   },
   {
     id: 'manutencao',
     title: 'Relatório de Manutenção',
     description: 'Histórico e previsão de manutenções, custos e peças.',
     icon: Wrench,
-    color: 'bg-blue-50 text-blue-700',
+    color: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
   },
   {
     id: 'saidas',
     title: 'Registro de Saídas',
     description: 'Histórico de saídas por embarcação, destino e passageiros.',
     icon: Ship,
-    color: 'bg-nautify-50 text-nautify-700',
+    color: 'bg-nautify-50 text-nautify-700 dark:bg-nautify-500/15 dark:text-nautify-300',
   },
   {
     id: 'socios',
@@ -67,36 +71,73 @@ const reportTypes = [
   },
 ];
 
-const mockHistory = [
-  {
-    id: '1', type: 'financeiro', title: 'Relatório Financeiro - Mar 2026',
-    createdAt: '2026-03-15', format: 'PDF', size: '1.2 MB',
-  },
-  {
-    id: '2', type: 'despesas', title: 'Análise de Despesas - T1 2026',
-    createdAt: '2026-03-10', format: 'XLSX', size: '845 KB',
-  },
-  {
-    id: '3', type: 'combustivel', title: 'Consumo Combustível - Fev 2026',
-    createdAt: '2026-02-28', format: 'PDF', size: '960 KB',
-  },
-  {
-    id: '4', type: 'financeiro', title: 'Relatório Financeiro - Fev 2026',
-    createdAt: '2026-02-15', format: 'PDF', size: '1.1 MB',
-  },
-];
-
 export default function RelatoriosPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [startDate, setStartDate] = useState('2026-01-01');
+  const [endDate, setEndDate] = useState('2026-03-31');
+  const [boatId, setBoatId] = useState('');
+  const [previewData, setPreviewData] = useState<ReportData | null>(null);
 
-  const handleGenerate = (format: string) => {
+  const { boats } = useBoats();
+
+  const { data: reportHistory, loading, error, refetch } = useApi<ReportData[]>(
+    () => reportService.list(),
+  );
+
+  const currentFilter = () => ({
+    type: selectedType as ReportData['type'],
+    period: 'personalizado' as const,
+    startDate,
+    endDate,
+    boatId,
+  });
+
+  const handleGenerate = async () => {
+    if (!selectedType) return;
     setGenerating(true);
-    setTimeout(() => {
+    try {
+      const res = await reportService.generate(currentFilter());
+      setPreviewData(res.data);
+    } finally {
       setGenerating(false);
-      setSelectedType(null);
-    }, 2000);
+    }
   };
+
+  const handleExport = async (format: 'pdf' | 'xlsx' | 'csv') => {
+    if (!selectedType) return;
+    setGenerating(true);
+    try {
+      const blob = await reportService.export(currentFilter(), format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !reportHistory) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <p className="text-muted-foreground">{error || 'Erro ao carregar relatórios'}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -149,32 +190,29 @@ export default function RelatoriosPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Input label="Data Início" type="date" defaultValue="2026-01-01" />
-              <Input label="Data Fim" type="date" defaultValue="2026-03-31" />
-              <Select label="Embarcação">
-                <option value="">Todas</option>
-                <option value="1">Mar Azul</option>
-                <option value="2">Veleiro Sol</option>
-              </Select>
-              <Select label="Agrupamento">
-                <option value="mensal">Mensal</option>
-                <option value="semanal">Semanal</option>
-                <option value="diario">Diário</option>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Input label="Data Início" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Input label="Data Fim" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <Select label="Embarcação" value={boatId} onChange={(e) => setBoatId(e.target.value)}>
+                <option value="">Todas as embarcações</option>
+                {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </Select>
             </div>
             <div className="flex flex-wrap gap-3 pt-2">
-              <Button onClick={() => handleGenerate('pdf')} disabled={generating}>
+              <Button onClick={handleGenerate} disabled={generating}>
                 {generating ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
                 ) : (
-                  <><FileText className="h-4 w-4 mr-2" /> Gerar PDF</>
+                  <><TrendingUp className="h-4 w-4 mr-2" /> Gerar Relatório</>
                 )}
               </Button>
-              <Button variant="outline" onClick={() => handleGenerate('xlsx')} disabled={generating}>
+              <Button variant="outline" onClick={() => handleExport('pdf')} disabled={generating}>
+                <FileText className="h-4 w-4 mr-2" /> Exportar PDF
+              </Button>
+              <Button variant="outline" onClick={() => handleExport('xlsx')} disabled={generating}>
                 <BarChart3 className="h-4 w-4 mr-2" /> Exportar XLSX
               </Button>
-              <Button variant="outline" onClick={() => handleGenerate('csv')} disabled={generating}>
+              <Button variant="outline" onClick={() => handleExport('csv')} disabled={generating}>
                 <Download className="h-4 w-4 mr-2" /> Exportar CSV
               </Button>
             </div>
@@ -182,56 +220,62 @@ export default function RelatoriosPage() {
         </Card>
       )}
 
-      {/* Preview Section (Mock chart) */}
-      {selectedType && (
+      {/* Preview Section */}
+      {previewData && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pré-visualização</CardTitle>
+            <CardTitle className="text-base">{previewData.title} — {previewData.period}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
               {/* Summary Stats */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 sm:p-4 bg-muted/50 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground">Período</p>
-                  <p className="text-sm font-bold mt-1">Jan - Mar 2026</p>
-                </div>
-                <div className="p-3 sm:p-4 bg-muted/50 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground">Total Receitas</p>
-                  <p className="text-sm font-bold text-emerald-600 mt-1">{formatCurrency(94500)}</p>
-                </div>
-                <div className="p-3 sm:p-4 bg-muted/50 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground">Total Despesas</p>
-                  <p className="text-sm font-bold text-red-600 mt-1">{formatCurrency(62300)}</p>
-                </div>
-                <div className="p-3 sm:p-4 bg-muted/50 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground">Saldo</p>
-                  <p className="text-sm font-bold text-nautify-700 mt-1">{formatCurrency(32200)}</p>
-                </div>
-              </div>
-
-              {/* Mini Chart placeholder */}
-              <div className="flex items-end gap-2 h-40 px-4">
-                {[65, 48, 72, 55, 80, 62, 90, 45, 78, 60, 85, 70].map((h, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className={`w-full rounded-t ${i % 2 === 0 ? 'bg-emerald-400' : 'bg-red-400'}`}
-                      style={{ height: `${h}%` }}
-                    />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Object.entries(previewData.summary).map(([key, value]) => (
+                  <div key={key} className="p-3 sm:p-4 bg-muted/50 rounded-lg text-center">
+                    <p className="text-xs text-muted-foreground">{key}</p>
+                    <p className="text-sm font-bold mt-1">
+                      {key.toLowerCase().includes('total') || key.toLowerCase().includes('saldo') || key.toLowerCase().includes('custo') || key.toLowerCase().includes('valor')
+                        ? formatCurrency(value)
+                        : value.toLocaleString('pt-BR')}
+                    </p>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-400" /> Receitas</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-400" /> Despesas</span>
-              </div>
+
+              {/* Chart data table */}
+              {previewData.chartData.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr>
+                        {Object.keys(previewData.chartData[0]).map((key) => (
+                          <th key={key} className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 border-b">
+                            {key}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {previewData.chartData.map((row, i) => (
+                        <tr key={i} className="hover:bg-muted/50">
+                          {Object.values(row).map((val, j) => (
+                            <td key={j} className="px-4 py-2">
+                              {typeof val === 'number' ? val.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : String(val)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Report History */}
-      <Card>
+      {reportHistory.length > 0 && <Card>
         <CardHeader>
           <CardTitle className="text-base">Relatórios Gerados</CardTitle>
         </CardHeader>
@@ -249,7 +293,7 @@ export default function RelatoriosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {mockHistory.map((report) => {
+                {reportHistory.map((report) => {
                   const typeInfo = reportTypes.find((r) => r.id === report.type);
                   const TypeIcon = typeInfo?.icon || FileText;
                   return (
@@ -260,11 +304,11 @@ export default function RelatoriosPage() {
                           <TypeIcon className="h-3 w-3 mr-1" /> {typeInfo?.title.split(' ')[0]}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{report.createdAt}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{report.generatedAt}</td>
                       <td className="px-6 py-4">
-                        <Badge variant="outline">{report.format}</Badge>
+                        <Badge variant="outline">{report.period}</Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-right text-muted-foreground">{report.size}</td>
+                      <td className="px-6 py-4 text-sm text-right text-muted-foreground">-</td>
                       <td className="px-6 py-4">
                         <Button variant="ghost" size="sm">
                           <Download className="h-4 w-4" />
@@ -277,7 +321,7 @@ export default function RelatoriosPage() {
             </table>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

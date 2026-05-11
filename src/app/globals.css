@@ -24,9 +24,10 @@
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
-  --primary: #1d64d7;
+  --primary: #2563eb;
+  /* Enhanced primary color for better vibrance */
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
+  --secondary: #f8fafc;
   --secondary-foreground: #334155;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
@@ -45,6 +46,44 @@
   --success-foreground: #ffffff;
   --warning: #f59e0b;
   --warning-foreground: #ffffff;
+
+  /* Nautical accents */
+  --accent-gold: #c59f34;
+  --accent-gold-foreground: #ffffff;
+}
+
+.dark {
+  --background: #0b1120;
+  --foreground: #f8fafc;
+  --card: #0f172a;
+  /* Deeper dark card */
+  --card-foreground: #f8fafc;
+  --primary: #3b82f6;
+  /* Brighter dark mode primary */
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #0f172a;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #e2e8f0;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #3b99f5;
+  --sidebar-bg: #070d1a;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-accent: #111827;
+  --sidebar-muted: #64748b;
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+
+  /* Nautical accents */
+  --accent-gold: #d4af37;
+  --accent-gold-foreground: #0f172a;
 }
 
 @theme inline {
@@ -84,8 +123,11 @@
   --color-nautify-800: var(--nautify-800);
   --color-nautify-900: var(--nautify-900);
   --color-nautify-950: var(--nautify-950);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-gold-foreground: var(--accent-gold-foreground);
+  --font-sans: var(--font-inter), sans-serif;
+  --font-heading: var(--font-inter), sans-serif;
+  --font-mono: var(--font-mono);
   --radius-lg: 0.75rem;
   --radius-md: 0.5rem;
   --radius-sm: 0.25rem;
@@ -98,7 +140,22 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  @apply font-sans;
+  text-rendering: optimizeLegibility;
+  font-optical-sizing: auto;
+}
+
+select,
+option,
+optgroup {
+  color: var(--foreground);
+  background-color: var(--card);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading), sans-serif;
 }
 
 ::-webkit-scrollbar {
@@ -120,27 +177,167 @@ body {
 }
 
 /* ============================================
-   Animations - Conservative, functional
+   Utility Classes - Premium UI
    ============================================ */
+.bg-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .bg-glass {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.4) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+.dark .glass-panel {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.4) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glow {
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+}
+
+.dark .glow {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+.text-gradient {
+  background: linear-gradient(to right, var(--primary), var(--nautify-400));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .text-gradient {
+  background: linear-gradient(to right, var(--nautify-300), var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   Animations - Dynamic & Smooth
+   ============================================ */
+
+/* Dropdown (autocomplete, menus) */
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Fade-up entrance (cards, form sections) */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade-in (generic) */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scale-in (buttons, badges appearing) */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slide-up step transition */
+@keyframes step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* Backdrop fade */
 @keyframes backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
+
 @keyframes backdrop-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 /* Slide from left (mobile sidebar) */
 @keyframes slide-in-left {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
+
 @keyframes slide-out-left {
-  from { transform: translateX(0); }
-  to { transform: translateX(-100%); }
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
 }
 
 /* Modal */
@@ -149,16 +346,19 @@ body {
     opacity: 0;
     transform: scale(0.97) translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
+
 @keyframes modal-out {
   from {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+
   to {
     opacity: 0;
     transform: scale(0.97) translateY(6px);
@@ -167,52 +367,263 @@ body {
 
 /* Page content fade (mobile only) */
 @keyframes page-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Collapsible section expand */
 @keyframes collapse-open {
-  from { grid-template-rows: 0fr; }
-  to { grid-template-rows: 1fr; }
+  from {
+    grid-template-rows: 0fr;
+  }
+
+  to {
+    grid-template-rows: 1fr;
+  }
 }
+
 @keyframes collapse-close {
-  from { grid-template-rows: 1fr; }
-  to { grid-template-rows: 0fr; }
+  from {
+    grid-template-rows: 1fr;
+  }
+
+  to {
+    grid-template-rows: 0fr;
+  }
+}
+
+.animate-dropdown-in {
+  animation: dropdown-in 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-up {
+  animation: fade-up 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 300ms ease-out both;
+}
+
+.animate-scale-in {
+  animation: scale-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-step-enter {
+  animation: step-enter 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+
+/* Staggered children animation */
+.animate-stagger>* {
+  animation: fade-up 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-stagger>*:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.animate-stagger>*:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.animate-stagger>*:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.animate-stagger>*:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.animate-stagger>*:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.animate-stagger>*:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+.animate-stagger>*:nth-child(7) {
+  animation-delay: 360ms;
+}
+
+.animate-stagger>*:nth-child(8) {
+  animation-delay: 420ms;
 }
 
 .animate-backdrop-in {
   animation: backdrop-in 200ms ease-out forwards;
 }
+
 .animate-backdrop-out {
   animation: backdrop-out 150ms ease-in forwards;
 }
+
 .animate-slide-in-left {
   animation: slide-in-left 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
 .animate-slide-out-left {
   animation: slide-out-left 200ms ease-in forwards;
 }
+
 .animate-modal-in {
   animation: modal-in 200ms ease-out forwards;
 }
+
 .animate-modal-out {
   animation: modal-out 150ms ease-in forwards;
 }
+
 .animate-page-fade-in {
   animation: page-fade-in 250ms ease-out;
 }
+
 .animate-collapse-open {
   display: grid;
   animation: collapse-open 200ms ease-out forwards;
 }
+
 .animate-collapse-close {
   display: grid;
   animation: collapse-close 150ms ease-in forwards;
 }
 
+/* Toast slide-in / slide-out */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-toast-out {
+  animation: toast-out 200ms ease-in both;
+}
+
+.reactEasyCrop_Container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+  cursor: move;
+}
+
+.reactEasyCrop_Image,
+.reactEasyCrop_Video {
+  will-change: transform;
+}
+
+.reactEasyCrop_Contain {
+  position: absolute;
+  inset: 0;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+}
+
+.reactEasyCrop_Cover_Horizontal {
+  width: 100%;
+  height: auto;
+}
+
+.reactEasyCrop_Cover_Vertical {
+  width: auto;
+  height: 100%;
+}
+
+.reactEasyCrop_CropArea {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 0 0 9999em rgba(2, 6, 23, 0.72);
+}
+
+.reactEasyCrop_CropAreaRound {
+  border-radius: 50%;
+}
+
 @media (min-width: 1024px) {
   .animate-page-fade-in {
     animation: none;
+  }
+}
+
+/* ============================================
+   Landing Page - Blob Animation
+   ============================================ */
+@keyframes landing-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(20px, -30px) scale(1.05); }
+  50% { transform: translate(-10px, 20px) scale(0.95); }
+  75% { transform: translate(15px, 10px) scale(1.02); }
+}
+
+.animate-landing-blob {
+  animation: landing-blob 20s ease-in-out infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* ── Date input calendar icon: adapt to dark mode ─────────────────────────
+   The browser-native calendar picker icon is always black by default and
+   does not respect CSS variables. Invert it in dark mode so it's visible
+   on the dark background.
+   ──────────────────────────────────────────────────────────────────────── */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* ── Prevent iOS Safari auto-zoom on input focus ──────────────────────────
+   Safari zooms the page when a focused input has font-size < 16px.
+   Applies 16px on screens ≤ 768px — desktop stays visually unchanged.
+   ──────────────────────────────────────────────────────────────────────── */
+@media screen and (max-width: 768px) {
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }

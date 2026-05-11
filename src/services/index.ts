@@ -1,17 +1,24 @@
 import { api } from '@/lib/api';
+import { clearSupabaseAndBackendAuth } from '@/lib/auth-state';
 import type {
   User,
+  UserAddress,
+  DocumentType,
   Boat,
   Expense,
   Revenue,
   CashFlowSummary,
   CashFlowEntry,
   Trip,
+  TripOccurrenceResponse,
   Fueling,
   FuelConsumptionSummary,
   Incident,
   Maintenance,
+  MaintenanceCompletePayload,
+  MaintenancePartHistory,
   CalendarEvent,
+  UnifiedCalendarEvent,
   Partner,
   PartnerContribution,
   Document,
@@ -19,8 +26,19 @@ import type {
   ReportData,
   ReportFilter,
   DashboardStats,
+  Plan,
+  Subscription,
+  BillingPromotion,
+  SubscriptionPriceChange,
+  AdminAuditLog,
+  AdminOverview,
+  AdminAccountSummary,
+  AdminSubscriptionSummary,
+  AdminPlanUpdateResult,
   ApiResponse,
   PaginatedResponse,
+  SettlementRequest,
+  RefundRequest,
 } from '@/types';
 
 // ============================================
@@ -30,13 +48,55 @@ export const authService = {
   login: (email: string, password: string) =>
     api.post<ApiResponse<{ token: string; user: User }>>('/auth/login', { email, password }),
 
-  register: (data: { name: string; email: string; phone?: string; password: string }) =>
-    api.post<ApiResponse<User>>('/auth/register', data),
+  register: (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password: string;
+    documentType?: DocumentType;
+    document?: string;
+    birthDate?: string;
+    address?: UserAddress;
+  }) => api.post<ApiResponse<User>>('/auth/register', data),
+
+  supabaseExchange: (supabaseToken: string) =>
+    api.post<ApiResponse<{ token: string; user: User }>>(
+      '/auth/supabase-exchange',
+      {},
+      { Authorization: `Bearer ${supabaseToken}` },
+    ),
+
+  supabaseLogin: (supabaseToken: string) =>
+    api.post<ApiResponse<{ token: string; user: User }>>(
+      '/auth/supabase-login',
+      {},
+      { Authorization: `Bearer ${supabaseToken}` },
+    ),
+
+  supabaseRegister: (supabaseToken: string, data: {
+    name: string;
+    phone?: string;
+    documentType?: DocumentType;
+    document?: string;
+    birthDate?: string;
+    address?: UserAddress;
+  }) =>
+    api.post<ApiResponse<{ token: string; user: User }>>(
+      '/auth/supabase-register',
+      data,
+      { Authorization: `Bearer ${supabaseToken}` },
+    ),
 
   me: () => api.get<ApiResponse<User>>('/auth/me'),
 
-  logout: () => {
-    localStorage.removeItem('nautify_token');
+  updateProfile: (data: Partial<Omit<User, 'id' | 'createdAt'>>) =>
+    api.put<ApiResponse<User>>('/auth/profile', data),
+
+  checkAvailability: (data: { email?: string; document?: string }) =>
+    api.post<ApiResponse<{ emailAvailable: boolean; documentAvailable: boolean }>>('/auth/check-availability', data),
+
+  logout: async () => {
+    await clearSupabaseAndBackendAuth();
     window.location.href = '/login';
   },
 };
@@ -63,11 +123,17 @@ export const boatService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/boats/${id}`),
 
-  addMember: (boatId: string, data: { userId: string; role: string }) =>
-    api.post<ApiResponse<void>>(`/boats/${boatId}/members`, data),
+  inviteMember: (boatId: string, data: { email: string; role: string }) =>
+    api.post<ApiResponse<void>>(`/boats/${boatId}/invitations`, data),
 
   removeMember: (boatId: string, memberId: string) =>
     api.delete<ApiResponse<void>>(`/boats/${boatId}/members/${memberId}`),
+};
+
+export const boatInvitationService = {
+  accept: (id: string) => api.post<ApiResponse<{ id: string; status: string }>>(`/boat-invitations/${id}/accept`, {}),
+
+  reject: (id: string) => api.post<ApiResponse<{ id: string; status: string }>>(`/boat-invitations/${id}/reject`, {}),
 };
 
 // ============================================
@@ -93,7 +159,9 @@ export const expenseService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/expenses/${id}`),
 
-  markAsPaid: (id: string) => api.patch<ApiResponse<Expense>>(`/expenses/${id}/pay`, {}),
+  markAsPaid: (id: string, data: SettlementRequest) => api.patch<ApiResponse<Expense>>(`/expenses/${id}/pay`, data),
+
+  refund: (id: string, data: RefundRequest) => api.patch<ApiResponse<Expense>>(`/expenses/${id}/refund`, data),
 };
 
 // ============================================
@@ -119,7 +187,9 @@ export const revenueService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/revenues/${id}`),
 
-  markAsReceived: (id: string) => api.patch<ApiResponse<Revenue>>(`/revenues/${id}/receive`, {}),
+  markAsReceived: (id: string, data: SettlementRequest) => api.patch<ApiResponse<Revenue>>(`/revenues/${id}/receive`, data),
+
+  refund: (id: string, data: RefundRequest) => api.patch<ApiResponse<Revenue>>(`/revenues/${id}/refund`, data),
 };
 
 // ============================================
@@ -134,9 +204,11 @@ export const cashFlowService = {
     return api.get<ApiResponse<CashFlowSummary>>(`/cashflow/summary?${query.toString()}`);
   },
 
-  listEntries: (params?: { boatId?: string; page?: number; limit?: number }) => {
+  listEntries: (params?: { boatId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.startDate) query.set('start_date', params.startDate);
+    if (params?.endDate) query.set('end_date', params.endDate);
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
     return api.get<PaginatedResponse<CashFlowEntry>>(`/cashflow/entries?${query.toString()}`);
@@ -160,10 +232,18 @@ export const tripService = {
 
   create: (data: Partial<Trip>) => api.post<ApiResponse<Trip>>('/trips', data),
 
+  update: (id: string, data: Partial<Trip>) =>
+    api.put<ApiResponse<Trip>>(`/trips/${id}`, data),
+
+  start: (id: string) => api.patch<ApiResponse<Trip>>(`/trips/${id}/start`, {}),
+
   finish: (id: string, observations?: string) =>
     api.patch<ApiResponse<Trip>>(`/trips/${id}/finish`, { observations }),
 
   cancel: (id: string) => api.patch<ApiResponse<Trip>>(`/trips/${id}/cancel`, {}),
+
+  registerOccurrence: (id: string, occurrence: string) =>
+    api.patch<ApiResponse<TripOccurrenceResponse>>(`/trips/${id}/occurrence`, { occurrence }),
 };
 
 // ============================================
@@ -203,8 +283,13 @@ export const incidentService = {
 
   getById: (id: string) => api.get<ApiResponse<Incident>>(`/incidents/${id}`),
 
-  create: (data: FormData) =>
-    api.post<ApiResponse<Incident>>('/incidents', data),
+  create: (data: {
+    boatId: string;
+    tripId: string;
+    description: string;
+    estimatedCost: number;
+    photos?: string[];
+  }) => api.post<ApiResponse<Incident>>('/incidents', data),
 
   approve: (id: string, data: { expenseMode: 'exclusivo' | 'rateado'; responsibleUserId?: string }) =>
     api.patch<ApiResponse<Incident>>(`/incidents/${id}/approve`, data),
@@ -235,8 +320,18 @@ export const maintenanceService = {
 
   delete: (id: string) => api.delete<ApiResponse<void>>(`/maintenances/${id}`),
 
-  complete: (id: string, data: { actualCost?: number; notes?: string }) =>
+  cancel: (id: string) => api.patch<ApiResponse<Maintenance>>(`/maintenances/${id}/cancel`, {}),
+
+  complete: (id: string, data: MaintenanceCompletePayload) =>
     api.patch<ApiResponse<Maintenance>>(`/maintenances/${id}/complete`, data),
+
+  listParts: (params?: { boatId?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api.get<PaginatedResponse<MaintenancePartHistory>>(`/maintenance-parts?${query.toString()}`);
+  },
 };
 
 // ============================================
@@ -262,6 +357,20 @@ export const calendarService = {
   delete: (id: string) => api.delete<ApiResponse<void>>(`/events/${id}`),
 
   cancel: (id: string) => api.patch<ApiResponse<CalendarEvent>>(`/events/${id}/cancel`, {}),
+
+  bulkCreate: (events: Partial<CalendarEvent>[]) =>
+    api.post<ApiResponse<{ created: number }>>('/events/bulk', { events }),
+
+  // Agenda unificada: agrega manutenções, saídas e eventos manuais em uma única
+  // chamada. Front não precisa mais mesclar entidades client-side.
+  getUnified: (params?: { from?: string; to?: string; boatId?: string; kind?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.kind) query.set('kind', params.kind);
+    return api.get<ApiResponse<UnifiedCalendarEvent[]>>(`/calendar?${query.toString()}`);
+  },
 };
 
 // ============================================
@@ -293,8 +402,21 @@ export const partnerService = {
     return api.get<PaginatedResponse<PartnerContribution>>(`/partners/${partnerId}/contributions?${query.toString()}`);
   },
 
-  payContribution: (contributionId: string) =>
-    api.patch<ApiResponse<PartnerContribution>>(`/contributions/${contributionId}/pay`, {}),
+  listAllContributions: (params?: { page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api.get<PaginatedResponse<PartnerContribution>>(`/contributions?${query.toString()}`);
+  },
+
+  payContribution: (contributionId: string, data: SettlementRequest) =>
+    api.patch<ApiResponse<PartnerContribution>>(`/contributions/${contributionId}/pay`, data),
+
+  refundContribution: (contributionId: string, data: RefundRequest) =>
+    api.patch<ApiResponse<PartnerContribution>>(`/contributions/${contributionId}/refund`, data),
+
+  generateContributions: () =>
+    api.post<ApiResponse<{ month: string; generated: number }>>('/contributions/generate', {}),
 };
 
 // ============================================
@@ -314,6 +436,18 @@ export const documentService = {
   getById: (id: string) => api.get<ApiResponse<Document>>(`/documents/${id}`),
 
   upload: (data: FormData) => api.post<ApiResponse<Document>>('/documents', data),
+
+  create: (data: {
+    title: string;
+    description?: string;
+    category: string;
+    boatId?: string;
+    fileUrl: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    expirationDate?: string;
+  }) => api.post<ApiResponse<Document>>('/documents', data),
 
   update: (id: string, data: Partial<Document>) =>
     api.put<ApiResponse<Document>>(`/documents/${id}`, data),
@@ -344,6 +478,82 @@ export const notificationService = {
 };
 
 // ============================================
+// Planos
+// ============================================
+export const planService = {
+  list: () => api.get<ApiResponse<Plan[]>>('/plans'),
+};
+
+// ============================================
+// Assinaturas
+// ============================================
+export const subscriptionService = {
+  list: () => api.get<ApiResponse<Subscription[]>>('/subscriptions'),
+
+  getById: (id: string) => api.get<ApiResponse<Subscription>>(`/subscriptions/${id}`),
+
+  cancel: (id: string) => api.post<ApiResponse<void>>(`/subscriptions/${id}/cancel`, {}),
+
+  activate: (id: string) => api.post<ApiResponse<{ id: string; status: string }>>(`/subscriptions/${id}/activate`, {}),
+
+  getPaymentLink: (id: string) => api.get<ApiResponse<{ invoiceUrl: string; bankSlipUrl: string; status: string; dueDate: string }>>(`/subscriptions/${id}/payment-link`),
+};
+
+export const adminService = {
+  getOverview: () => api.get<ApiResponse<AdminOverview>>('/admin/overview'),
+
+  listAccounts: () => api.get<ApiResponse<AdminAccountSummary[]>>('/admin/accounts'),
+
+  getAccount: (id: string) => api.get<ApiResponse<AdminAccountSummary>>(`/admin/accounts/${id}`),
+
+  updateAccountStatus: (id: string, data: { status: 'active' | 'suspended'; reason?: string }) =>
+    api.patch<ApiResponse<AdminAccountSummary>>(`/admin/accounts/${id}/status`, data),
+
+  listSubscriptions: () => api.get<ApiResponse<AdminSubscriptionSummary[]>>('/admin/subscriptions'),
+
+  updateSubscriptionPrice: (id: string, data: { value?: number; promotionId?: string; reason?: string }) =>
+    api.patch<ApiResponse<{ subscription: AdminSubscriptionSummary; change: SubscriptionPriceChange }>>(`/admin/subscriptions/${id}/price`, data),
+
+  updateSubscriptionPlan: (id: string, data: { planId: string; reason?: string }) =>
+    api.patch<ApiResponse<{ subscription: AdminSubscriptionSummary; change: SubscriptionPriceChange }>>(`/admin/subscriptions/${id}/plan`, data),
+
+  cancelSubscription: (id: string) =>
+    api.post<ApiResponse<{ id: string; status: string }>>(`/admin/subscriptions/${id}/cancel`, {}),
+
+  reactivateSubscription: (id: string) =>
+    api.post<ApiResponse<Subscription>>(`/admin/subscriptions/${id}/reactivate`, {}),
+
+  listPromotions: () => api.get<ApiResponse<BillingPromotion[]>>('/admin/promotions'),
+
+  createPromotion: (data: {
+    code: string;
+    name: string;
+    mode: BillingPromotion['mode'];
+    value: number;
+    startsAt?: string;
+    endsAt?: string;
+    active?: boolean;
+  }) => api.post<ApiResponse<BillingPromotion>>('/admin/promotions', data),
+
+  updatePromotion: (id: string, data: Partial<{
+    code: string;
+    name: string;
+    mode: BillingPromotion['mode'];
+    value: number;
+    startsAt: string;
+    endsAt: string;
+    clearStartsAt: boolean;
+    clearEndsAt: boolean;
+    active: boolean;
+  }>) => api.patch<ApiResponse<BillingPromotion>>(`/admin/promotions/${id}`, data),
+
+  updatePlan: (id: string, data: { price: number; propagateToExisting: boolean; reason?: string }) =>
+    api.patch<ApiResponse<AdminPlanUpdateResult>>(`/admin/plans/${id}`, data),
+
+  listAuditLogs: (limit = 50) => api.get<ApiResponse<AdminAuditLog[]>>(`/admin/audit-logs?limit=${limit}`),
+};
+
+// ============================================
 // Relatórios
 // ============================================
 export const reportService = {
@@ -352,6 +562,11 @@ export const reportService = {
   list: (page = 1, limit = 20) =>
     api.get<PaginatedResponse<ReportData>>(`/reports?page=${page}&limit=${limit}`),
 
-  export: (id: string, format: 'pdf' | 'xlsx' | 'csv') =>
-    api.get<Blob>(`/reports/${id}/export?format=${format}`),
+  export: (filter: ReportFilter, format: 'pdf' | 'xlsx' | 'csv') => {
+    const params = new URLSearchParams({ format, type: filter.type, period: filter.period });
+    if (filter.boatId) params.set('boat_id', filter.boatId);
+    if (filter.startDate) params.set('start_date', filter.startDate);
+    if (filter.endDate) params.set('end_date', filter.endDate);
+    return api.getBlob(`/reports/export?${params.toString()}`);
+  },
 };

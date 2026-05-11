@@ -2,221 +2,312 @@
 
 import React, { useState } from 'react';
 import {
-  Wrench,
-  Plus,
-  Search,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Ship,
-  Calendar,
-  DollarSign,
-  Package,
-  XCircle,
+  Wrench, Plus, Search, AlertTriangle,
+  CheckCircle, Clock, Calendar, DollarSign, Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/Toast';
+import { getErrorMessage } from '@/lib/errors';
 import { StatCard } from '@/components/shared/StatCard';
-import { formatCurrency, formatDate } from '@/lib/utils';
-
-const mockMaintenances = [
-  { id: '1', boatName: 'Mar Azul', title: 'Revisão do Motor 200h', description: 'Troca de óleo, filtros e verificação geral do motor', type: 'preventiva', status: 'agendada', priority: 'alta', scheduledDate: '2026-03-10', estimatedCost: 2500, parts: [{ name: 'Óleo Motor', qty: 4, cost: 120 }, { name: 'Filtro de óleo', qty: 1, cost: 85 }] },
-  { id: '2', boatName: 'Veleiro Sol', title: 'Revisão Elétrica', description: 'Verificação do sistema elétrico completo', type: 'preventiva', status: 'agendada', priority: 'media', scheduledDate: '2026-03-20', estimatedCost: 800, parts: [] },
-  { id: '3', boatName: 'Mar Azul', title: 'Reparo no Casco', description: 'Arranhão lateral precisa de reparo e pintura', type: 'corretiva', status: 'em_andamento', priority: 'alta', scheduledDate: '2026-03-05', estimatedCost: 1200, parts: [{ name: 'Resina Epóxi', qty: 2, cost: 180 }, { name: 'Tinta náutica', qty: 1, cost: 350 }] },
-  { id: '4', boatName: 'Mar Azul', title: 'Troca da Hélice', description: 'Hélice com desgaste excessivo', type: 'corretiva', status: 'concluida', priority: 'urgente', scheduledDate: '2026-02-25', estimatedCost: 3500, actualCost: 3200, parts: [{ name: 'Hélice inox', qty: 1, cost: 2800 }] },
-  { id: '5', boatName: 'Veleiro Sol', title: 'Polimento e Enceramento', description: 'Manutenção estética preventiva', type: 'preventiva', status: 'concluida', priority: 'baixa', scheduledDate: '2026-02-20', estimatedCost: 500, actualCost: 480, parts: [] },
-  { id: '6', boatName: 'Mar Azul', title: 'Inspeção de Segurança', description: 'Verificação de coletes, extintores e sinalizadores', type: 'preventiva', status: 'cancelada', priority: 'media', scheduledDate: '2026-02-15', estimatedCost: 300, parts: [] },
-];
-
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  agendada: { label: 'Agendada', color: 'bg-blue-50 text-blue-700', icon: Calendar },
-  em_andamento: { label: 'Em andamento', color: 'bg-amber-50 text-amber-700', icon: Clock },
-  concluida: { label: 'Concluída', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle },
-  cancelada: { label: 'Cancelada', color: 'bg-red-50 text-red-700', icon: XCircle },
-};
-
-const priorityConfig: Record<string, { label: string; color: string }> = {
-  baixa: { label: 'Baixa', color: 'bg-gray-100 text-gray-700' },
-  media: { label: 'Média', color: 'bg-blue-50 text-blue-700' },
-  alta: { label: 'Alta', color: 'bg-amber-50 text-amber-700' },
-  urgente: { label: 'Urgente', color: 'bg-red-50 text-red-700' },
-};
+import { EmptyState } from '@/components/shared/EmptyState';
+import { MaintenanceCard } from '@/components/maintenance/MaintenanceCard';
+import { MaintenanceEditModal, MaintenanceCompleteModal } from '@/components/maintenance/MaintenanceModals';
+import { formatCurrency } from '@/lib/utils';
+import { useApi } from '@/hooks/useApi';
+import { useBoats } from '@/hooks/useEntityOptions';
+import { useHasAnyBoat } from '@/hooks/useBoatPermissions';
+import { maintenanceService } from '@/services';
+import type { Maintenance, MaintenancePartHistory, PaginatedResponse } from '@/types';
 
 export default function ManutencaoPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Maintenance | null>(null);
+  const [completing, setCompleting] = useState<Maintenance | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [activeTab, setActiveTab] = useState<'manutencoes' | 'pecas'>('manutencoes');
+  const [partsBoatFilter, setPartsBoatFilter] = useState('');
+  const [creating, setCreating] = useState(false);
+  const canWrite = useHasAnyBoat();
+  const { boats } = useBoats();
+  const toast = useToast();
 
-  const agendadas = mockMaintenances.filter((m) => m.status === 'agendada').length;
-  const emAndamento = mockMaintenances.filter((m) => m.status === 'em_andamento').length;
-  const concluidas = mockMaintenances.filter((m) => m.status === 'concluida').length;
-  const totalEstimated = mockMaintenances.filter((m) => m.status !== 'cancelada').reduce((s, m) => s + m.estimatedCost, 0);
+  const { data: paginatedData, loading, error, refetch } = useApi(
+    () => maintenanceService.list(),
+    [],
+  );
+  const maintenances: Maintenance[] = paginatedData ?? [];
 
-  const filtered = mockMaintenances.filter((m) => {
-    if (search && !m.title.toLowerCase().includes(search.toLowerCase()) && !m.description.toLowerCase().includes(search.toLowerCase())) return false;
+  const { data: partsData, loading: loadingParts } = useApi(
+    () => maintenanceService.listParts({ boatId: partsBoatFilter || undefined }),
+    [partsBoatFilter, activeTab],
+  );
+  const partsResponse = partsData as PaginatedResponse<MaintenancePartHistory> | null;
+  const parts: MaintenancePartHistory[] = partsResponse?.data ?? [];
+
+  const agendadas = maintenances.filter((m) => m.status === 'agendada').length;
+  const emAndamento = maintenances.filter((m) => m.status === 'em_andamento').length;
+  const concluidas = maintenances.filter((m) => m.status === 'concluida').length;
+  const totalEstimated = maintenances
+    .filter((m) => m.status !== 'cancelada')
+    .reduce((s, m) => s + m.estimatedCost, 0);
+
+  const filtered = maintenances.filter((m) => {
+    const term = search.toLowerCase();
+    if (term && !m.title.toLowerCase().includes(term) && !m.description.toLowerCase().includes(term)) return false;
     if (filterType && m.type !== filterType) return false;
     if (filterStatus && m.status !== filterStatus) return false;
     return true;
   });
 
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    setCreating(true);
+    try {
+      await maintenanceService.create({
+        title: String(formData.get('title') || ''),
+        description: String(formData.get('description') || ''),
+        type: formData.get('type') as Maintenance['type'],
+        priority: formData.get('priority') as Maintenance['priority'],
+        boatId: String(formData.get('boatId') || ''),
+        scheduledDate: String(formData.get('scheduledDate') || ''),
+        estimatedCost: Number(formData.get('estimatedCost')) || 0,
+      });
+      toast.success('Manutencao criada');
+      setIsCreateOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao criar manutencao'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleStart = async (m: Maintenance) => {
+    try {
+      await maintenanceService.update(m.id, { ...m, status: 'em_andamento' });
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao iniciar manutencao'));
+    }
+  };
+
+  const handleCancel = async (m: Maintenance) => {
+    try {
+      await maintenanceService.cancel(m.id);
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Erro ao cancelar manutencao'));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-8 w-8 text-red-500" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Manutenção</h1>
-          <p className="text-muted-foreground">Gestão de manutenções preventivas e corretivas</p>
+          <h1 className="text-2xl font-bold">Manutencao</h1>
+          <p className="text-muted-foreground">Gestao de manutencoes preventivas e corretivas</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Nova Manutenção
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Nova Manutencao
+          </Button>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Agendadas" value={String(agendadas)} subtitle="futuras" icon={Calendar} iconBgColor="bg-blue-50" iconColor="text-blue-600" />
-        <StatCard title="Em Andamento" value={String(emAndamento)} subtitle="ativas agora" icon={Clock} iconBgColor="bg-amber-50" iconColor="text-amber-600" />
-        <StatCard title="Concluídas" value={String(concluidas)} subtitle="finalizadas" icon={CheckCircle} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
-        <StatCard title="Custo Estimado" value={formatCurrency(totalEstimated)} subtitle="total previsto" icon={DollarSign} iconBgColor="bg-purple-50" iconColor="text-purple-600" />
+      <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+        <button
+          onClick={() => setActiveTab('manutencoes')}
+          className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${activeTab === 'manutencoes' ? 'bg-nautify-600 text-white' : 'hover:bg-muted'}`}
+        >
+          Manutencoes
+        </button>
+        <button
+          onClick={() => setActiveTab('pecas')}
+          className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${activeTab === 'pecas' ? 'bg-nautify-600 text-white' : 'hover:bg-muted'}`}
+        >
+          Pecas Trocadas
+        </button>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar manutenção..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      {activeTab === 'manutencoes' && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard title="Pendentes"     value={String(agendadas)}      subtitle="aguardando" icon={Calendar}    iconBgColor="bg-blue-50 dark:bg-blue-500/15"     iconColor="text-blue-600 dark:text-blue-300" />
+            <StatCard title="Em Andamento"  value={String(emAndamento)}    subtitle="ativas"      icon={Clock}       iconBgColor="bg-amber-50 dark:bg-amber-500/15"   iconColor="text-amber-600 dark:text-amber-300" />
+            <StatCard title="Concluidas"    value={String(concluidas)}     subtitle="finalizadas" icon={CheckCircle} iconBgColor="bg-emerald-50 dark:bg-emerald-500/15" iconColor="text-emerald-600 dark:text-emerald-300" />
+            <StatCard title="Custo Estimado" value={formatCurrency(totalEstimated)} subtitle="total previsto" icon={DollarSign} iconBgColor="bg-purple-50 dark:bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-300" />
+          </div>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Buscar manutencao..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+                </div>
+                <Select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                  <option value="">Todos os tipos</option>
+                  <option value="preventiva">Preventiva</option>
+                  <option value="corretiva">Corretiva</option>
+                </Select>
+                <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="">Todos os status</option>
+                  <option value="agendada">Pendente</option>
+                  <option value="em_andamento">Em andamento</option>
+                  <option value="concluida">Concluida</option>
+                  <option value="cancelada">Cancelada</option>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {filtered.length === 0 ? (
+            <EmptyState icon={Wrench} title="Nenhuma manutencao" description="Crie uma nova manutencao para comecar." />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filtered.map((m) => (
+                <MaintenanceCard
+                  key={m.id}
+                  maintenance={m}
+                  canWrite={canWrite}
+                  onStart={() => handleStart(m)}
+                  onComplete={() => setCompleting(m)}
+                  onEdit={() => setEditing(m)}
+                  onCancel={() => handleCancel(m)}
+                />
+              ))}
             </div>
-            <Select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="">Todos os tipos</option>
-              <option value="preventiva">Preventiva</option>
-              <option value="corretiva">Corretiva</option>
-            </Select>
-            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="">Todos os status</option>
-              <option value="agendada">Agendada</option>
-              <option value="em_andamento">Em andamento</option>
-              <option value="concluida">Concluída</option>
-              <option value="cancelada">Cancelada</option>
+          )}
+        </>
+      )}
+
+      {activeTab === 'pecas' && (
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <Select value={partsBoatFilter} onChange={(e) => setPartsBoatFilter(e.target.value)}>
+              <option value="">Todas embarcacoes</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Maintenance Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filtered.map((maintenance) => {
-          const status = statusConfig[maintenance.status];
-          const priority = priorityConfig[maintenance.priority];
-          const StatusIcon = status.icon;
-          return (
-            <Card key={maintenance.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3">
-                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${maintenance.type === 'preventiva' ? 'bg-blue-50' : 'bg-amber-50'}`}>
-                      <Wrench className={`h-5 w-5 ${maintenance.type === 'preventiva' ? 'text-blue-600' : 'text-amber-600'}`} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold">{maintenance.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">{maintenance.description}</p>
-                    </div>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 ${status.color}`}>
-                    <StatusIcon className="h-3 w-3" /> {status.label}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="secondary">
-                    <Ship className="h-3 w-3 mr-1" /> {maintenance.boatName}
-                  </Badge>
-                  <Badge variant={maintenance.type === 'preventiva' ? 'default' : 'outline'}>
-                    {maintenance.type === 'preventiva' ? 'Preventiva' : 'Corretiva'}
-                  </Badge>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priority.color}`}>
-                    {priority.label}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-muted/50 rounded-lg text-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Agendada para</p>
-                    <p className="text-sm font-medium">{formatDate(maintenance.scheduledDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Custo Estimado</p>
-                    <p className="text-sm font-medium">{formatCurrency(maintenance.estimatedCost)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Custo Real</p>
-                    <p className="text-sm font-medium">{maintenance.actualCost ? formatCurrency(maintenance.actualCost) : '—'}</p>
-                  </div>
-                </div>
-
-                {maintenance.parts.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                      <Package className="h-3 w-3" /> Peças ({maintenance.parts.length})
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {maintenance.parts.map((part, i) => (
-                        <span key={i} className="text-[10px] bg-muted px-2 py-0.5 rounded-full">
-                          {part.name} (x{part.qty}) - {formatCurrency(part.cost)}
-                        </span>
+          {loadingParts ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : parts.length === 0 ? (
+            <EmptyState icon={Wrench} title="Nenhuma peca registrada" description="Pecas adicionadas em manutencoes aparecerao aqui" />
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="text-left px-4 py-3 font-medium">Peca</th>
+                        <th className="text-left px-4 py-3 font-medium">Qtd</th>
+                        <th className="text-left px-4 py-3 font-medium">Custo Unit.</th>
+                        <th className="text-left px-4 py-3 font-medium">Total</th>
+                        <th className="text-left px-4 py-3 font-medium">Manutencao</th>
+                        <th className="text-left px-4 py-3 font-medium">Data</th>
+                        <th className="text-left px-4 py-3 font-medium">Embarcacao</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parts.map((p) => (
+                        <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-3 font-medium">{p.name}</td>
+                          <td className="px-4 py-3">{p.quantity}</td>
+                          <td className="px-4 py-3">{formatCurrency(p.unitCost)}</td>
+                          <td className="px-4 py-3 font-medium">{formatCurrency(p.totalCost)}</td>
+                          <td className="px-4 py-3">{p.maintenanceTitle}</td>
+                          <td className="px-4 py-3">{new Date(p.scheduledDate).toLocaleDateString('pt-BR')}</td>
+                          <td className="px-4 py-3">{p.boatName}</td>
+                        </tr>
                       ))}
-                    </div>
-                  </div>
-                )}
-
-                {(maintenance.status === 'agendada' || maintenance.status === 'em_andamento') && (
-                  <div className="flex gap-2 mt-4">
-                    {maintenance.status === 'agendada' && <Button variant="outline" size="sm" className="flex-1">Iniciar</Button>}
-                    {maintenance.status === 'em_andamento' && <Button size="sm" className="flex-1">Concluir</Button>}
-                    <Button variant="ghost" size="sm">Cancelar</Button>
-                  </div>
-                )}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      )}
 
-      {/* Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Manutenção">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }}>
-          <Input label="Título" placeholder="Ex: Revisão do Motor" required />
-          <Textarea label="Descrição" placeholder="Descreva a manutenção..." rows={3} />
+      {/* Criação — sem custo real (essa info entra só na conclusão) */}
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Nova Manutencao">
+        <form className="space-y-4" onSubmit={handleCreate}>
+          <Input name="title" label="Titulo" placeholder="Ex: Revisao do Motor" required />
+          <Textarea name="description" label="Descricao" placeholder="Descreva a manutencao..." rows={3} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Tipo">
+            <Select name="type" label="Tipo">
               <option value="preventiva">Preventiva</option>
               <option value="corretiva">Corretiva</option>
             </Select>
-            <Select label="Prioridade">
+            <Select name="priority" label="Prioridade">
               <option value="baixa">Baixa</option>
-              <option value="media">Média</option>
+              <option value="media">Media</option>
               <option value="alta">Alta</option>
               <option value="urgente">Urgente</option>
             </Select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Embarcação">
-              <option value="1">Mar Azul</option>
-              <option value="2">Veleiro Sol</option>
+            <Select name="boatId" label="Embarcacao" required>
+              <option value="">Selecione...</option>
+              {boats.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
-            <Input label="Data Agendada" type="date" required />
+            <Input name="scheduledDate" label="Data Agendada" type="date" required />
           </div>
-          <Input label="Custo Estimado (R$)" type="number" placeholder="0,00" />
+          <Input name="estimatedCost" label="Custo Estimado (R$)" type="number" step="0.01" placeholder="0,00" />
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" className="flex-1">Criar Manutenção</Button>
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
+            <Button type="submit" className="flex-1" disabled={creating}>
+              {creating ? 'Criando...' : 'Criar Manutencao'}
+            </Button>
           </div>
         </form>
       </Modal>
+
+      {editing && (
+        <MaintenanceEditModal
+          maintenance={editing}
+          boats={boats}
+          isOpen
+          onClose={() => setEditing(null)}
+          onSaved={refetch}
+        />
+      )}
+
+      {completing && (
+        <MaintenanceCompleteModal
+          maintenance={completing}
+          isOpen
+          onClose={() => setCompleting(null)}
+          onCompleted={refetch}
+        />
+      )}
     </div>
   );
 }

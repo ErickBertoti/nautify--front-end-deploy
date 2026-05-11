@@ -10,10 +10,12 @@ interface ModalProps {
   title?: string;
   description?: string;
   className?: string;
+  bodyClassName?: string;
+  footer?: React.ReactNode;
   children: React.ReactNode;
 }
 
-export function Modal({ isOpen, onClose, title, description, className, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, description, className, bodyClassName, footer, children }: ModalProps) {
   const [visible, setVisible] = useState(false);
 
   // React recommended pattern: adjust state during render when props change
@@ -58,7 +60,7 @@ export function Modal({ isOpen, onClose, title, description, className, children
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div
         className={cn(
           'fixed inset-0 bg-black/50 backdrop-blur-sm',
@@ -68,16 +70,18 @@ export function Modal({ isOpen, onClose, title, description, className, children
       />
       <div
         className={cn(
-          'relative z-50 w-full max-w-lg mx-4 sm:mx-auto rounded-xl bg-card border border-border shadow-xl',
-          'max-h-[85vh] overflow-y-auto',
+          'relative z-50 flex max-h-[100dvh] w-full flex-col overflow-hidden border border-border/50 bg-card/95 backdrop-blur-md shadow-2xl',
+          'rounded-t-[1.75rem] sm:mx-4 sm:max-h-[85vh] sm:max-w-lg sm:rounded-xl',
+          'before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-transparent before:via-accent-gold/40 before:to-transparent',
           isClosing ? 'animate-modal-out' : 'animate-modal-in',
           className
         )}
       >
+        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/10 sm:hidden" />
         {(title || description) && (
-          <div className="flex items-start justify-between px-6 pt-6 pb-2">
+          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border/60 bg-card/95 px-4 pb-3 pt-4 backdrop-blur-md sm:px-6 sm:pb-2 sm:pt-6">
             <div>
-              {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
+              {title && <h2 className="text-xl font-bold text-foreground !font-heading">{title}</h2>}
               {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
             </div>
             <button
@@ -88,7 +92,14 @@ export function Modal({ isOpen, onClose, title, description, className, children
             </button>
           </div>
         )}
-        <div className="px-6 pb-6 pt-2">{children}</div>
+        <div className={cn('flex-1 overflow-y-auto px-4 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4', bodyClassName)}>
+          {children}
+        </div>
+        {footer && (
+          <div className="sticky bottom-0 z-10 border-t border-border/60 bg-card/95 px-4 py-4 backdrop-blur-md sm:px-6">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
