@@ -16,9 +16,18 @@ import type {
   Incident,
   Maintenance,
   MaintenanceCompletePayload,
+  MaintenancePart,
   MaintenancePartHistory,
+  MaintenancePartPayload,
   CalendarEvent,
   UnifiedCalendarEvent,
+  Beneficiary,
+  BeneficiaryPayload,
+  TurnoverPayment,
+  TurnoverPaymentPayload,
+  TurnoverSummary,
+  Attachment,
+  AttachmentMetadataPayload,
   Partner,
   PartnerContribution,
   Document,
@@ -551,6 +560,111 @@ export const adminService = {
     api.patch<ApiResponse<AdminPlanUpdateResult>>(`/admin/plans/${id}`, data),
 
   listAuditLogs: (limit = 50) => api.get<ApiResponse<AdminAuditLog[]>>(`/admin/audit-logs?limit=${limit}`),
+};
+
+// ============================================
+// Beneficiários / Prestadores
+// ============================================
+export const beneficiaryService = {
+  list: (params?: { boatId?: string; type?: string; active?: boolean; q?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.type) query.set('type', params.type);
+    if (typeof params?.active === 'boolean') query.set('active', String(params.active));
+    if (params?.q) query.set('q', params.q);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api.get<PaginatedResponse<Beneficiary>>(`/beneficiaries?${query.toString()}`);
+  },
+
+  getById: (id: string) => api.get<ApiResponse<Beneficiary>>(`/beneficiaries/${id}`),
+
+  create: (data: BeneficiaryPayload) => api.post<ApiResponse<Beneficiary>>('/beneficiaries', data),
+
+  update: (id: string, data: BeneficiaryPayload) =>
+    api.put<ApiResponse<Beneficiary>>(`/beneficiaries/${id}`, data),
+
+  deactivate: (id: string) =>
+    api.patch<ApiResponse<{ id: string; active: false }>>(`/beneficiaries/${id}/deactivate`, {}),
+
+  delete: (id: string) => api.delete<ApiResponse<void>>(`/beneficiaries/${id}`),
+};
+
+// ============================================
+// Turnover / Giro
+// ============================================
+export const turnoverService = {
+  list: (params?: {
+    beneficiaryId?: string;
+    boatId?: string;
+    direction?: string;
+    enteredCompanyCash?: boolean;
+    from?: string;
+    to?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.beneficiaryId) query.set('beneficiary_id', params.beneficiaryId);
+    if (params?.boatId) query.set('boat_id', params.boatId);
+    if (params?.direction) query.set('direction', params.direction);
+    if (typeof params?.enteredCompanyCash === 'boolean')
+      query.set('entered_company_cash', String(params.enteredCompanyCash));
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api.get<PaginatedResponse<TurnoverPayment>>(`/turnover-payments?${query.toString()}`);
+  },
+
+  summary: (params?: { beneficiaryId?: string; from?: string; to?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.beneficiaryId) query.set('beneficiary_id', params.beneficiaryId);
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    return api.get<ApiResponse<TurnoverSummary>>(`/turnover-payments/summary?${query.toString()}`);
+  },
+
+  create: (data: TurnoverPaymentPayload) =>
+    api.post<ApiResponse<TurnoverPayment>>('/turnover-payments', data),
+
+  update: (id: string, data: TurnoverPaymentPayload) =>
+    api.put<ApiResponse<TurnoverPayment>>(`/turnover-payments/${id}`, data),
+
+  delete: (id: string) => api.delete<ApiResponse<void>>(`/turnover-payments/${id}`),
+};
+
+// ============================================
+// Attachments (front uploads diretamente ao Supabase Storage,
+// envia apenas metadata para este endpoint)
+// ============================================
+export const attachmentService = {
+  list: (entityType: string, entityId: string) => {
+    const query = new URLSearchParams({ entity_type: entityType, entity_id: entityId });
+    return api.get<ApiResponse<Attachment[]>>(`/attachments?${query.toString()}`);
+  },
+
+  create: (data: AttachmentMetadataPayload) =>
+    api.post<ApiResponse<Attachment>>('/attachments', data),
+
+  delete: (id: string) => api.delete<ApiResponse<void>>(`/attachments/${id}`),
+};
+
+// ============================================
+// Maintenance Parts (CRUD por manutenção)
+// ============================================
+export const maintenancePartsService = {
+  list: (maintenanceId: string) =>
+    api.get<ApiResponse<MaintenancePart[]>>(`/maintenances/${maintenanceId}/parts`),
+
+  create: (maintenanceId: string, data: MaintenancePartPayload) =>
+    api.post<ApiResponse<MaintenancePart>>(`/maintenances/${maintenanceId}/parts`, data),
+
+  update: (partId: string, data: MaintenancePartPayload) =>
+    api.put<ApiResponse<MaintenancePart>>(`/maintenance-parts/${partId}`, data),
+
+  delete: (partId: string) =>
+    api.delete<ApiResponse<void>>(`/maintenance-parts/${partId}`),
 };
 
 // ============================================
