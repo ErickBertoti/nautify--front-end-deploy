@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   Wrench, AlertTriangle, Calendar, Clock, CheckCircle, XCircle,
-  Ship, Package, Pencil,
+  Ship, Package, Pencil, Paperclip,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -76,9 +76,14 @@ interface Props {
   onComplete: () => void;
   onEdit: () => void;
   onCancel: () => void;
+  onManageParts?: () => void;
+  onManageAttachments?: () => void;
 }
 
-export function MaintenanceCard({ maintenance, canWrite, onStart, onComplete, onEdit, onCancel }: Props) {
+export function MaintenanceCard({
+  maintenance, canWrite, onStart, onComplete, onEdit, onCancel,
+  onManageParts, onManageAttachments,
+}: Props) {
   const overdue = isOverdue(maintenance);
   const status = statusConfig[maintenance.status] ?? {
     label: maintenance.status,
@@ -171,6 +176,21 @@ export function MaintenanceCard({ maintenance, canWrite, onStart, onComplete, on
           <p className="mt-3 text-xs text-muted-foreground">
             <span className="font-medium">Conclusao:</span> {maintenance.completionNotes}
           </p>
+        )}
+
+        {(onManageParts || onManageAttachments) && (
+          <div className="flex flex-wrap gap-2 mt-3 text-xs">
+            {onManageParts && (
+              <button type="button" onClick={onManageParts} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted hover:bg-muted/70 transition-colors cursor-pointer">
+                <Package className="h-3 w-3" /> Peças
+              </button>
+            )}
+            {onManageAttachments && (
+              <button type="button" onClick={onManageAttachments} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted hover:bg-muted/70 transition-colors cursor-pointer">
+                <Paperclip className="h-3 w-3" /> Anexos
+              </button>
+            )}
+          </div>
         )}
 
         {canWrite && (maintenance.status === 'agendada' || maintenance.status === 'em_andamento') && (
